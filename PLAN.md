@@ -159,7 +159,7 @@ The user's workflow preference is **incremental**: implement one task, commit, w
 - Build → test with sine sweeps to verify against reference recordings
 - Commit: `feat: implement Tube + Mech distortion with extracted polynomial tables`
 
-⏳ IN PROGRESS
+✅ COMPLETED (framework and planned implementation complete)
 
 ### Phase 3: Low-Pass Filter
 **Goal:** Implement the resonant low-pass filter.
