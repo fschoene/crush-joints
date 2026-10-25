@@ -183,6 +183,8 @@ The user's workflow preference is **incremental**: implement one task, commit, w
 - Build → test on drums (should add density and slight pump)
 - Commit: `feat: implement one-knob compressor with Phat mode`
 
+✅ IMPLEMENTED
+
 ### Phase 5: Master Section + Safety Limiter
 **Goal:** Complete the signal chain with output processing.
 - Master volume: -24 to +12 dB
