@@ -2,6 +2,14 @@
 
 namespace CrushJoints
 {
+    namespace
+    {
+        constexpr float kMinResonance = 0.7071f;
+        constexpr float kMaxResonance = 4.2071f; // 0.7071 + 3.5
+        constexpr float kBypassCutoff = 18000.0f;
+        constexpr float kBypassResonance = 0.05f;
+    }
+
     LadderFilter::LadderFilter()
     {
     }
@@ -10,54 +18,60 @@ namespace CrushJoints
     {
     }
 
-    void LadderFilter::prepareToPlay(double sampleRate)
+    void LadderFilter::prepareToPlay(double newSampleRate, int samplesPerBlock, int newNumChannels)
     {
-        filter.prepare({static_cast<float>(sampleRate), 2, 1});
-        filter.setType(juce::dsp::StateVariableTPTFilter<float>::Type::lowpass);
+        sampleRate = newSampleRate;
+        numChannels = juce::jlimit(1, 2, newNumChannels);
+
+        juce::dsp::ProcessSpec spec;
+        spec.sampleRate = sampleRate;
+        spec.maximumBlockSize = static_cast<juce::uint32>(juce::jmax(1, samplesPerBlock));
+        spec.numChannels = static_cast<juce::uint32>(numChannels);
+
+        filter.prepare(spec);
+        filter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+        filter.setCutoffFrequency(juce::jlimit(20.0f, static_cast<float>(sampleRate * 0.45), cutoff));
+        filter.setResonance(kMinResonance);
+        filter.reset();
+    }
+
+    void LadderFilter::reset()
+    {
+        filter.reset();
     }
 
     void LadderFilter::processBlock(juce::AudioBuffer<float>& buffer)
     {
-        // TODO: Implement filter processing with:
-        // 1. Check if filter is enabled
-        // 2. Apply filter with current cutoff/res parameters 
-        // 3. Handle bypass logic appropriately
-        // 4. Apply any special behaviors per original specifications
-        
-        // For now, this is a placeholder that demonstrates the structure
-        
-        // Example pseudo-implementation:
-        /*
-        if (filterOn)
-        {
-            // Apply the filter to all channels
-            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-            {
-                // Configure filter coefficients based on current settings
-                float qValue = resonance * 4.2f; // Map resonance to appropriate range
-                qValue = jlimit(0.707f, 4.2f, qValue); // Clamp between valid range
-                
-                // Set filter coefficients for this channel
-                filter.setParameters({cutoff, qValue, 1.0f}); // Assuming 1.0 as gain
-                
-                // Process the buffer channel
-                filter.process(juce::dsp::ProcessContextReplacing<float>(buffer));
-            }
-        }
-        // If filter is bypassed, do nothing - pass through unchanged
-        */
+        if (! filterOn)
+            return;
+
+        // Wide-open filter with no resonance is inaudible; skip the work and
+        // avoid numerical edge cases at 20 kHz.
+        if (cutoff >= kBypassCutoff && resonance < kBypassResonance)
+            return;
+
+        const float maxSafeCutoff = static_cast<float>(sampleRate * 0.4);
+        const float safeCutoff = juce::jlimit(20.0f, maxSafeCutoff, cutoff);
+        const float safeResonance = juce::jmap(resonance, 0.0f, 1.0f, kMinResonance, kMaxResonance);
+
+        filter.setCutoffFrequency(safeCutoff);
+        filter.setResonance(safeResonance);
+
+        const int channels = juce::jmin(buffer.getNumChannels(), numChannels);
+        juce::dsp::AudioBlock<float> block(buffer);
+        auto subBlock = block.getSubsetChannelBlock(0, static_cast<size_t>(channels));
+
+        juce::dsp::ProcessContextReplacing<float> context(subBlock);
+        filter.process(context);
     }
 
     void LadderFilter::setCutoff(float freq)
     {
-        // Clamp frequency to valid range: 20Hz to 20kHz
         cutoff = juce::jlimit(20.0f, 20000.0f, freq);
     }
 
     void LadderFilter::setResonance(float res)
     {
-        // Map resonance value (0.0 to 1.0) to appropriate Q factor range
-        // Originally described as ~5 effective at maximum, which matches ~4.2 Q
         resonance = juce::jlimit(0.0f, 1.0f, res);
     }
 
@@ -65,25 +79,27 @@ namespace CrushJoints
     {
         filterOn = on;
     }
-    
-    // A/B Testing Methods
+
+    //==============================================================================
+    // A/B testing methods
     void LadderFilter::copyAtoB()
     {
         cutoffB = cutoffA;
         resonanceB = resonanceA;
         filterOnB = filterOnA;
     }
-    
+
     void LadderFilter::copyBtoA()
     {
         cutoffA = cutoffB;
         resonanceA = resonanceB;
         filterOnA = filterOnB;
     }
-    
+
     void LadderFilter::toggleAB()
     {
-        isA = !isA;
+        isA = ! isA;
+
         if (isA)
         {
             cutoff = cutoffA;

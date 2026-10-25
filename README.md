@@ -12,9 +12,10 @@ plugin, featuring:
 - Master volume and mix controls
 - Full preset system with 12 built-in presets
 
-> **Current status:** the plugin builds as VST3/AU/Standalone and the editor is
-> interactive, but the DSP modules are still pass-through stubs, so audio is not
-> processed yet. See [docs/STATUS.md](docs/STATUS.md) for details.
+> **Current status:** the full signal chain (Distortion → Filter → Compressor →
+> Master) is implemented and covered by offline tests. The plugin builds as
+> VST3/AU/Standalone. Host validation (`pluginval`/`auval`/DAW testing) and
+> several GUI features are still pending. See [docs/STATUS.md](docs/STATUS.md).
 
 ## Building
 
@@ -43,6 +44,12 @@ On macOS the built artefacts are in `build/CrushJoints_artefacts/Release/`:
 Copy the VST3/AU bundles to `~/Library/Audio/Plug-Ins/VST3/` and
 `~/Library/Audio/Plug-Ins/Components/` respectively, or run the standalone app
 directly.
+
+Run the offline DSP tests with:
+
+```sh
+./build/CrushJointsTests_artefacts/Release/CrushJointsTests
+```
 
 ## Development
 

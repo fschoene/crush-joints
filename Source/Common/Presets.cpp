@@ -171,10 +171,10 @@ namespace CrushJoints
             true,               // tubeOn
             3500.0f,            // cutoff
             0.3f,               // res
-            false,              // lpfOn
+            true,               // lpfOn
             0.0f,               // amount
             false,              // phat
-            true,               // compOn
+            false,              // compOn
             0.0f,               // volume
             1.0f,               // mix
             true                // masterOn
@@ -205,7 +205,7 @@ namespace CrushJoints
     Preset Presets::getPreset(int index) const
     {
         if (index >= 0 && index < static_cast<int>(presets.size()))
-            return presets[index];
+            return presets[static_cast<size_t>(index)];
         return presets[0]; // Return default preset if index is invalid
     }
 

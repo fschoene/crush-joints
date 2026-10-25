@@ -11,7 +11,7 @@ CrushJointsAudioProcessor::CrushJointsAudioProcessor()
                 // Distortion parameters
                 std::make_unique<juce::AudioParameterFloat>("tube", "Tube", 0.0f, 1.0f, 0.0f),
                 std::make_unique<juce::AudioParameterFloat>("mech", "Mech", 0.0f, 1.0f, 0.0f),
-                std::make_unique<juce::AudioParameterBool>("tube_on", "Tube On", true),
+                std::make_unique<juce::AudioParameterBool>("tube_on", "Distortion On", true),
                 
                 // Filter parameters
                 std::make_unique<juce::AudioParameterFloat>("cutoff", "Cutoff", 20.0f, 20000.0f, 20000.0f),
@@ -94,16 +94,29 @@ bool CrushJointsAudioProcessor::isBusesLayoutSupported(const BusesLayout& layout
 //==============================================================================
 void CrushJointsAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
+    const int numChannels = juce::jmax(1, getTotalNumOutputChannels());
+
     // Setup all DSP modules
     distortion.prepareToPlay(sampleRate);
-    filter.prepareToPlay(sampleRate);
-    compressor.prepareToPlay(sampleRate);
-    master.prepareToPlay(sampleRate);
-    oversampler.prepareToPlay(sampleRate, samplesPerBlock);
+    filter.prepareToPlay(sampleRate, samplesPerBlock, numChannels);
+    compressor.prepareToPlay(sampleRate, samplesPerBlock, numChannels);
+    master.prepareToPlay(sampleRate, samplesPerBlock, numChannels);
+
+    dryBuffer.setSize(numChannels, samplesPerBlock, false, false, true);
+    dryBuffer.clear();
+
+    // No oversampling in the current signal path, so the plugin reports no
+    // added latency.
+    setLatencySamples(0);
 }
 
 void CrushJointsAudioProcessor::releaseResources()
 {
+    distortion.reset();
+    filter.reset();
+    compressor.reset();
+    master.reset();
+    dryBuffer.clear();
 }
 
 //==============================================================================
@@ -125,15 +138,28 @@ void CrushJointsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     compressor.setPhatMode(phatParam->get());
     compressor.setCompressorOn(compOnParam->get());
 
+    const bool masterIsOn = masterOnParam->get();
+    const float mix = mixParam->get();
+
     master.setVolume(volumeParam->get());
-    master.setMix(mixParam->get());
-    master.setMasterOn(masterOnParam->get());
+    master.setMix(mix);
+    master.setMasterOn(masterIsOn);
+
+    // The dry signal is needed for the mix or for a full bypass.
+    const bool needsDrySignal = (! masterIsOn) || mix < 0.999f;
+
+    if (needsDrySignal)
+    {
+        jassert(buffer.getNumSamples() <= dryBuffer.getNumSamples());
+        jassert(buffer.getNumChannels() <= dryBuffer.getNumChannels());
+        dryBuffer.makeCopyOf(buffer, true);
+    }
 
     // Complete signal chain: Distortion -> Filter -> Compressor -> Master
     distortion.processBlock(buffer);
     filter.processBlock(buffer);
     compressor.processBlock(buffer);
-    master.processBlock(buffer);
+    master.processBlock(buffer, needsDrySignal ? &dryBuffer : nullptr);
 }
 
 //==============================================================================
@@ -192,7 +218,7 @@ const juce::String CrushJointsAudioProcessor::getProgramName(int index)
 
 void CrushJointsAudioProcessor::changeProgramName(int index, const juce::String& newName)
 {
-    // Not implemented for now
+    juce::ignoreUnused(index, newName);
 }
 
 //==============================================================================

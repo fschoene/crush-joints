@@ -41,15 +41,15 @@ crush-joints/
     │   ├── Distortion.h/.cpp       # Tube + Mech waveshapers and coefficient tables
     │   ├── LadderFilter.h/.cpp     # SVF low-pass wrapper
     │   ├── Compressor.h/.cpp       # one-knob compressor + Phat
-    │   ├── Oversampler.h/.cpp      # 4× oversampling wrapper
+    │   ├── Oversampler.h/.cpp      # 4× oversampling wrapper (not in the current path)
     │   └── Master.h/.cpp           # volume, mix, limiter
     └── Common/
-        ├── CamelCrusherCoeffs.h/.cpp  # shared coefficient declarations (placeholder)
+        ├── CamelCrusherCoeffs.h/.cpp  # reverse-camel coefficient tables
         └── Presets.h/.cpp             # 12 built-in presets
 ```
 
-There is currently no CI workflow, no test target and no plugin host project in
-the repository.
+There is currently no CI workflow and no plugin-host project in the
+repository. The offline DSP tests live in `Tests/DSPTests.cpp`.
 
 ## 3. Build system
 
@@ -86,6 +86,8 @@ build/CrushJoints_artefacts/Release/
 ├── AU/CrushJoints.component
 ├── VST3/CrushJoints.vst3
 └── Standalone/CrushJoints.app
+
+build/CrushJointsTests_artefacts/Release/CrushJointsTests
 ```
 
 ## 4. Signal chain
@@ -107,13 +109,21 @@ Audio In
 1. `ScopedNoDenormals` is active for the block.
 2. Parameter values are read with `AudioParameterFloat/Bool::get()` and pushed
    into the corresponding DSP object via its setters.
-3. `distortion.processBlock`, `filter.processBlock`,
+3. If the Master is off or the mix is below 100%, the pre-effects signal is
+   copied into a pre-allocated dry buffer.
+4. `distortion.processBlock`, `filter.processBlock`,
    `compressor.processBlock` and `master.processBlock` are called in order.
+   Master receives the dry buffer so it can perform the dry/wet blend or a full
+   bypass.
 
-**Important:** all four `processBlock` implementations are currently empty or
-commented-out stubs, so the audio is passed through unmodified. The
-`Distortion::tubeDistort`/`mechDistort` helpers exist but are not called.
-`Oversampler` is prepared but never invoked. See [STATUS.md](STATUS.md).
+Distortion always runs the reference Tube stage followed by the Mech stage.
+The filter bypasses itself when it is off, wide open and non-resonant. The
+compressor bypasses when it is off or Amount is near zero. Master applies the
+mix, volume, a hard ±2.0 limiter and NaN/Inf sanitation.
+
+There is currently **no oversampling** in the signal path, matching the
+reverse-camel reference and keeping the dry/wet path free of latency. The
+`Oversampler` wrapper remains available for an optional future quality mode.
 
 ## 5. Parameters
 
@@ -138,8 +148,9 @@ binds to them by ID.
 Notes:
 
 - The research reference describes the original Master volume as -51–0 dB;
-  the implementation uses -24–+12 dB. This is a deliberate/unresolved
-  discrepancy and is listed in [STATUS.md](STATUS.md).
+  the implementation uses -24–+12 dB to match CrushClone's preset bank (some
+  presets use positive gain). This is an intentional deviation, documented in
+  [STATUS.md](STATUS.md).
 - The cutoff parameter is not skewed in the APVTS; the editor applies a
   `setSkewFactorFromMidPoint(1000.0)` to the knob so the low end is usable.
 - A/B state storage exists inside the DSP classes (`copyAtoB`, `copyBtoA`,
@@ -183,24 +194,44 @@ Implemented versus reference GUI:
 | Custom CamelCrusher styling | missing (default JUCE look) |
 | A/B testing UI | missing |
 | Resizable/scalable layout | missing (fixed size) |
-
 ## 8. DSP module structure
 
 Each DSP class follows the same pattern:
 
-- `prepareToPlay(sampleRate)` (plus block size for `Oversampler`) configures
-  JUCE DSP objects.
+- `prepareToPlay(sampleRate, samplesPerBlock, numChannels)` configures JUCE DSP
+  objects and resets state.
 - `processBlock(AudioBuffer<float>&)` is the audio hook.
 - Setters clamp/store parameters.
 - A/B helpers copy/toggle the stored parameter values.
 
-`Distortion` additionally owns the coefficient tables (see
-[RESEARCH.md](RESEARCH.md) and the discrepancy note in
-[STATUS.md](STATUS.md)). `Common/CamelCrusherCoeffs.h` declares shared
-`CrushJoints::disttube_coeffs`/`distmech_coeffs` arrays, but
-`CamelCrusherCoeffs.cpp` is a placeholder with no definitions; the actual data
-lives in `Distortion.cpp` as static class members. Nothing links against the
-unused shared declarations today.
+`Distortion` looks up the reference coefficient tables with linear
+interpolation between neighbouring entries, so automated changes are smooth
+while integer knob positions match the reference exactly. `Common/CamelCrusherCoeffs.h`
+declares the shared `CrushJoints::disttube_coeffs`/`distmech_coeffs` arrays and
+`Common/CamelCrusherCoeffs.cpp` defines them from the reverse-camel data.
+
+### Tests
+
+`Tests/DSPTests.cpp` is an offline JUCE console app (`CrushJointsTests`) that
+verifies:
+
+- coefficient table dimensions and anchor values,
+- the Tube/Mech waveshapers against an independent transcription of the
+  reverse-camel formulas,
+- the complete Distortion → Master path against reverse-camel's `run()` loop,
+- distortion transparency at amount 0 and bypass at `tube_on = false`,
+- low-pass attenuation and filter bypass,
+- compressor gain reduction, finite output and bypass,
+- master volume, limiter, bypass and dry/wet mix,
+- the preset bank, including the Telephone flags.
+
+Run it after building:
+
+```sh
+./build/CrushJointsTests_artefacts/Release/CrushJointsTests
+```
+
+The test target can be disabled with `-DCRUSHJOINTS_BUILD_TESTS=OFF`.
 
 ## 9. Plugin entry point
 

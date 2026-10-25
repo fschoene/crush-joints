@@ -82,3 +82,46 @@ target_include_directories(CrushJoints
         Source/DSP
         Source/Common
 )
+
+#==============================================================================
+# Offline DSP tests
+option(CRUSHJOINTS_BUILD_TESTS "Build the offline DSP test executable" ON)
+
+if(CRUSHJOINTS_BUILD_TESTS)
+    juce_add_console_app(CrushJointsTests PRODUCT_NAME "CrushJointsTests")
+
+    target_compile_definitions(CrushJointsTests
+        PRIVATE
+            JUCE_WEB_BROWSER=0
+            JUCE_USE_CURL=0
+            JUCE_STRICT_MODE=1
+    )
+
+    target_sources(CrushJointsTests
+        PRIVATE
+            Tests/DSPTests.cpp
+            Source/DSP/Distortion.cpp
+            Source/DSP/LadderFilter.cpp
+            Source/DSP/Compressor.cpp
+            Source/DSP/Master.cpp
+            Source/Common/CamelCrusherCoeffs.cpp
+            Source/Common/Presets.cpp
+    )
+
+    target_include_directories(CrushJointsTests
+        PRIVATE
+            Source
+            Source/DSP
+            Source/Common
+    )
+
+    target_link_libraries(CrushJointsTests
+        PRIVATE
+            juce::juce_dsp
+            juce::juce_audio_basics
+            juce::juce_core
+        PUBLIC
+            juce::juce_recommended_config_flags
+            juce::juce_recommended_warning_flags
+    )
+endif()

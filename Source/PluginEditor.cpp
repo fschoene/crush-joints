@@ -18,21 +18,21 @@ namespace
 
 //==============================================================================
 CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudioProcessor& p)
-    : AudioProcessorEditor(&p), processor(p), apvts(p.getAPVTS())
+    : AudioProcessorEditor(&p), processorRef(p), apvts(p.getAPVTS())
 {
     // ---- Preset bar ----------------------------------------------------------
     presetLabel.setText("Patch", juce::dontSendNotification);
     presetLabel.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(presetLabel);
 
-    for (int i = 0; i < processor.getNumPrograms(); ++i)
-        presetBox.addItem(processor.getProgramName(i), i + 1);
+    for (int i = 0; i < processorRef.getNumPrograms(); ++i)
+        presetBox.addItem(processorRef.getProgramName(i), i + 1);
     presetBox.setSelectedId(1, juce::dontSendNotification);
     presetBox.onChange = [this]
     {
         const auto index = presetBox.getSelectedItemIndex();
         if (index >= 0)
-            processor.setCurrentProgram(index);
+            processorRef.setCurrentProgram(index);
     };
     addAndMakeVisible(presetBox);
 
@@ -189,6 +189,6 @@ void CrushJointsAudioProcessorEditor::resized()
 void CrushJointsAudioProcessorEditor::randomizeParameters()
 {
     juce::Random random;
-    for (auto* parameter : processor.getParameters())
+    for (auto* parameter : processorRef.getParameters())
         parameter->setValueNotifyingHost(random.nextFloat());
 }

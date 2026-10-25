@@ -5,7 +5,6 @@
 #include "DSP/LadderFilter.h"
 #include "DSP/Compressor.h"
 #include "DSP/Master.h"
-#include "DSP/Oversampler.h"
 #include "Common/Presets.h"
 
 //==============================================================================
@@ -77,7 +76,9 @@ private:
     CrushJoints::LadderFilter filter;
     CrushJoints::Compressor compressor;
     CrushJoints::Master master;
-    CrushJoints::Oversampler oversampler;
+
+    // Pre-allocated buffer holding the pre-effects signal for dry/wet mixing.
+    juce::AudioBuffer<float> dryBuffer;
 
     // Preset manager
     CrushJoints::Presets presets;

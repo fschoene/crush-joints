@@ -1,7 +1,13 @@
 #include "Master.h"
+#include <cmath>
 
 namespace CrushJoints
 {
+    namespace
+    {
+        constexpr float kLimiterCeiling = 2.0f; // 8x headroom above 0 dBFS
+    }
+
     Master::Master()
     {
     }
@@ -10,89 +16,120 @@ namespace CrushJoints
     {
     }
 
-    void Master::prepareToPlay(double sampleRate)
+    void Master::prepareToPlay(double sampleRate, int samplesPerBlock, int numChannels)
     {
-        gain.prepare({static_cast<float>(sampleRate), 2, 1});
-        limiterChain.prepare({static_cast<float>(sampleRate), 2, 1});
-        
-        // Set up limiter with 8x headroom (±2.0)
-        limiterGain.setGainLinear(0.5f); // This corresponds to ±2.0 limit
+        juce::ignoreUnused(sampleRate, samplesPerBlock, numChannels);
     }
 
-    void Master::processBlock(juce::AudioBuffer<float>& buffer)
+    void Master::reset()
     {
-        // TODO: Implement master processing with:
-        // 1. Volume control (-24dB to +12dB)
-        // 2. Dry/wet mix control
-        // 3. Global on/off switch
-        // 4. Hard safety limiter at ±2.0
-        // 5. Denormal/NaN/Inf killing
-        
-        // For now, this demonstrates the structure
-        /*
-        if (masterOn)
+        // Stateless apart from parameter values.
+    }
+
+    void Master::processBlock(juce::AudioBuffer<float>& buffer, const juce::AudioBuffer<float>* dryBuffer)
+    {
+        const int numChannels = juce::jmin(buffer.getNumChannels(), 2);
+        const int numSamples = buffer.getNumSamples();
+
+        // Master off is a full bypass: output the untouched input.
+        if (! masterOn)
         {
-            // Apply volume control
-            gain.setGainDecibels(volume);
-            gain.process(juce::dsp::ProcessContextReplacing<float>(buffer));
-            
-            // Apply mix (dry/wet blending)
-            // This would blend wet signal with dry signal, 
-            // but implementation would depend on how this is integrated
-            
-            // Apply safety limiter with ±2.0 headroom
-            // limiterChain.process(...);
+            if (dryBuffer != nullptr)
+            {
+                for (int ch = 0; ch < numChannels; ++ch)
+                    buffer.copyFrom(ch, 0, *dryBuffer, ch, 0, numSamples);
+            }
+
+            return;
         }
-        // If bypassed, only denormal killing would occur
-        */
+
+        // Dry/wet blend
+        if (dryBuffer != nullptr && mix < 0.999f)
+        {
+            const float dryGain = 1.0f - mix;
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                float* wet = buffer.getWritePointer(ch);
+                const float* dry = dryBuffer->getReadPointer(ch);
+
+                for (int i = 0; i < numSamples; ++i)
+                    wet[i] = wet[i] * mix + dry[i] * dryGain;
+            }
+        }
+
+        // Output volume
+        buffer.applyGain(volumeGain);
+
+        // Safety limiter and sanitation
+        for (int ch = 0; ch < numChannels; ++ch)
+        {
+            float* data = buffer.getWritePointer(ch);
+
+            for (int i = 0; i < numSamples; ++i)
+            {
+                float sample = data[i];
+
+                if (sample > kLimiterCeiling)
+                    sample = kLimiterCeiling;
+                else if (sample < -kLimiterCeiling)
+                    sample = -kLimiterCeiling;
+
+                if (! std::isfinite(sample))
+                    sample = 0.0f;
+
+                data[i] = sample;
+            }
+        }
     }
 
     void Master::setVolume(float volumeDb)
     {
-        // Clamp volume between -24dB and +12dB
         volume = juce::jlimit(-24.0f, 12.0f, volumeDb);
+        volumeGain = juce::Decibels::decibelsToGain(volume);
     }
 
-    void Master::setMix(float mixVal)
+    void Master::setMix(float newMix)
     {
-        // Clamp mix between 0.0 and 1.0
-        mix = juce::jlimit(0.0f, 1.0f, mixVal);
+        mix = juce::jlimit(0.0f, 1.0f, newMix);
     }
 
     void Master::setMasterOn(bool on)
     {
         masterOn = on;
     }
-    
-    // A/B Testing Methods
+
+    //==============================================================================
+    // A/B testing methods
     void Master::copyAtoB()
     {
         volumeB = volumeA;
         mixB = mixA;
         masterOnB = masterOnA;
     }
-    
+
     void Master::copyBtoA()
     {
         volumeA = volumeB;
         mixA = mixB;
         masterOnA = masterOnB;
     }
-    
+
     void Master::toggleAB()
     {
-        isA = !isA;
+        isA = ! isA;
+
         if (isA)
         {
-            volume = volumeA;
-            mix = mixA;
-            masterOn = masterOnA;
+            setVolume(volumeA);
+            setMix(mixA);
+            setMasterOn(masterOnA);
         }
         else
         {
-            volume = volumeB;
-            mix = mixB;
-            masterOn = masterOnB;
+            setVolume(volumeB);
+            setMix(mixB);
+            setMasterOn(masterOnB);
         }
     }
 }

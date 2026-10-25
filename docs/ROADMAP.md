@@ -13,71 +13,34 @@ behaviour is in [RESEARCH.md](RESEARCH.md).
 3. **Keep the plugin shippable at every step.** Do not break the working
    VST3/AU/Standalone build while adding features.
 4. **Document deviations.** If the clone intentionally differs from the
-   original (for example 4× oversampling), record it in the code and here.
+   original (for example the -24..+12 dB master range), record it in the code
+   and here.
 
-## Milestone 1 — Real DSP (priority 0)
+## Milestone 1 — Real DSP (completed 2026-10-25)
 
-This is the critical path. Everything else is secondary until this is done.
+All four DSP blocks are implemented and verified by offline tests.
 
-### 1.1 Fix the coefficient tables
+- [x] Import the reference 101-entry Tube and Mech coefficient tables from
+      reverse-camel; store them in `Common/CamelCrusherCoeffs.cpp`.
+- [x] Implement Tube followed by Mech in series, with interpolation between
+      table entries.
+- [x] Implement the SVF low-pass filter with Q 0.7071–4.2071 and wide-open
+      bypass.
+- [x] Implement the one-knob soft-knee compressor, auto makeup and Phat
+      parallel path.
+- [x] Implement Master volume, dry/wet, full bypass, ±2.0 safety limiter and
+      NaN/Inf sanitation.
+- [x] Add `Tests/DSPTests.cpp`, including a literal transcription of
+      reverse-camel's `run()` loop for end-to-end comparison.
+- [x] Correct the Telephone preset flags (filter on, compressor off).
+- [x] Verify a clean, warning-free build and passing tests.
 
-- Re-derive or import the reference 101-entry Tube and Mech tables.
-- Decide on one storage location: either `Common/CamelCrusherCoeffs.cpp` or the
-  static members in `Distortion`, not both.
-- Add a unit test or a small offline checker that verifies:
-  - row count,
-  - monotonic gain mapping (Tube 1.0→≈5.0, Mech 1.0→≈11.0),
-  - index 0 is near-linear,
-  - index 100 reaches the documented saturation.
-- Document the table format (`{gain, a, b, c}` for Tube, `{gain, b, c}` for
-  Mech) next to the data.
+Decision: **no oversampling in v1.** It matches reverse-camel, avoids latency
+in the dry/wet path, and preserves the original's aliasing character. The
+`Oversampler` wrapper remains available for a future optional quality mode.
 
-### 1.2 Distortion
-
-- Implement `Distortion::processBlock` using `tubeDistort` and `mechDistort`.
-- Decide whether Tube and Mech run in series (research says Mech follows Tube)
-  and how the two amounts blend. Implement the chosen topology explicitly.
-- Respect `tube_on` bypass.
-- Use linear interpolation between table entries to avoid zipper noise.
-- Run the distortion inside the 4× oversampler (or remove the oversampler
-  wrapper if the original character is preferred without it).
-- Handle NaN/Inf and denormals at the module boundary.
-
-### 1.3 Filter
-
-- Implement `LadderFilter::processBlock` with
-  `StateVariableTPTFilter<float>` in low-pass mode.
-- Map resonance 0–1 to Q ≈ 0.707–4.2 and clamp below self-oscillation.
-- Bypass when `lpf_on` is false; optionally auto-bypass at 20 kHz / zero
-  resonance if that matches the original.
-- Recompute coefficients only when cutoff/Q change.
-
-### 1.4 Compressor
-
-- Implement the one-knob mapping: Amount → threshold (0…-30 dB), ratio
-  (1:1…8:1), attack (1–10 ms), release (50–150 ms), makeup (0…+12 dB).
-- Implement soft-knee gain computation and a sample-rate-independent envelope.
-- Implement Phat: parallel compressed path plus 120 Hz low shelf (+8 dB), with
-  the blend increasing with Amount.
-- Add gain-reduction metering data (even if it is not shown in the GUI yet).
-- Respect `comp_on` and `phat` flags.
-
-### 1.5 Master
-
-- Implement volume gain, dry/wet mix, and full bypass (`master_on`).
-- Add a hard safety limiter at ±2.0 and NaN/Inf/denormal flushing.
-- Resolve the volume range discrepancy (-24…+12 dB in code vs -51…0 dB in the
-  research) and update [RESEARCH.md](RESEARCH.md) or the parameter accordingly.
-- Ensure a true null when Master is off or Mix is 0%.
-
-### 1.6 DSP acceptance criteria
-
-- Sine sweep through every module produces no NaN/Inf, clicks or denormals.
-- All-off state is bit-transparent (or within the documented latency).
-- Distortion output matches the reference curves at several knob positions.
-- Filter magnitude response matches a 24 dB/oct low-pass with the expected Q.
-- Compressor gain reduction follows the documented Amount mapping.
-- Phat increases low-frequency energy without exceeding the limiter.
+Residual work from this milestone is tracked under Milestone 2 (state/API) and
+Milestone 4 (host validation, CPU testing, optional oversampling).
 
 ## Milestone 2 — State, presets and automation (priority 1)
 
@@ -171,9 +134,9 @@ Grouped from the earlier `IDEAS.md`; none of these are commitments.
 
 ## Definition of done for v1.0
 
-- [ ] All four DSP modules implemented and matched against references.
-- [ ] No pass-through stubs left in the signal chain.
+- [x] All four DSP modules implemented and matched against references.
+- [x] No pass-through stubs left in the signal chain.
 - [ ] Presets, state and host automation verified in at least two DAWs.
 - [ ] `pluginval` strictness 5+ and `auval` pass.
-- [ ] VST3, AU and Standalone artefacts built from a clean checkout.
+- [x] VST3, AU and Standalone artefacts built from a clean checkout.
 - [ ] README, docs and LICENSE consistent with the implementation.

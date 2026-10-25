@@ -70,8 +70,8 @@ Properties:
 - At TUBE = 0 the gain is 1.0 and the curve is essentially linear.
 - At TUBE = 100 the gain is about 5.0, pushing the signal into saturation.
 
-Reference entry 0: `{1.0, -0.000208, 0.9997, -0.000098}`.
-Reference entry 100: gain ≈ 5.0, full saturation.
+Reference entry 0: `{1.0, -0.000207935, 0.999713, -9.81884e-05}`.
+Reference entry 100: `{4.99996, 0.0206626, 0.206618, -0.483468}` (full saturation).
 
 ### Mech distortion (DistMech)
 
@@ -92,7 +92,7 @@ Properties:
 - Linear/`hard-clip`-style knees, unlike Tube's quadratic soft clipping.
 - Asymmetric offsets create even harmonics on top of the odd harmonics.
 - At MECH = 0 it is near-linear (`{1, 1.0, 0.000054}`).
-- At MECH = 100 it is heavy clipping (gain ≈ 11).
+- At MECH = 100 it is heavy clipping: `{11.0001, 0.0243904, -0.731707}`.
 
 ### Sound character
 
@@ -109,8 +109,9 @@ needed to compensate.
 
 The original does **not** oversample, so Mech can alias at high settings.
 Recreations such as CrushClone add 4× oversampling as a deliberate
-improvement. CrushJoints prepares a 4× oversampling wrapper but does not
-currently route audio through it.
+improvement. CrushJoints currently runs the waveshapers at the host sample
+rate, matching reverse-camel and keeping the dry/wet path latency-free. The
+`Oversampler` wrapper is available for a future optional quality mode.
 
 ## 4. Filter
 
@@ -153,6 +154,11 @@ Characteristics:
 - Not a transparent utility compressor: it is a density/pump tool intended for
   already-distorted signals.
 
+CrushClone's implementation uses a peak detector (maximum absolute sample
+across channels) smoothed by a one-pole attack/release filter, then a
+soft-knee gain computer. CrushJoints follows the same topology; the attack is
+1–10 ms and the release 50–150 ms, both faster at higher Amount.
+
 ### Phat mode
 
 - Parallel compression plus a low-shelf boost.
@@ -171,6 +177,10 @@ Characteristics:
 | VOLUME | -51 to 0 dB (reference) | 0 (unity) | Output level |
 | MIX | 0–100% | 100% (wet) | Dry/wet blend |
 
+> **Implementation note:** the plugin's Volume parameter uses **-24 to
+> +12 dB**, matching CrushClone's preset bank (some presets use +2 dB) rather
+> than the original's -51 to 0 dB. The deviation is intentional for now.
+
 Notes:
 
 - Master On/Off is a full bypass, unlike the per-module switches.
@@ -179,8 +189,8 @@ Notes:
   fully wet and enables parallel processing from one plugin.
 - The original applies hard output limiting, which can distort hot signals.
   Turning down Volume or disabling Phat resolves it.
-- CrushClone adds a safety limiter at ±2.0 (8× headroom) plus
-  denormal/NaN/Inf killing; CrushJoints plans to do the same.
+- CrushJoints follows CrushClone's safety limiter at ±2.0 (8× headroom) plus
+  NaN/Inf/denormal sanitation.
 
 ## 7. UI reference
 
@@ -234,7 +244,7 @@ The 12 patches used by CrushClone and CrushJoints:
 | DRM LoFiHit | 80 | 60 | 2000 | 50 | 40 | off | yes | -2 | 100 |
 | SYN Screamer | 30 | 80 | 7000 | 60 | 50 | on | yes | -1 | 100 |
 | Gentle Warmth | 20 | 0 | 15000 | 0 | 10 | off | yes | 0 | 50 |
-| Telephone | 10 | 0 | 3500 | 30 | 0 | off | no | 0 | 100 |
+| Telephone | 10 | 0 | 3500 | 30 | 0 | off | yes | 0 | 100 |
 | Destroy Everything | 100 | 100 | 1000 | 70 | 80 | on | yes | -4 | 100 |
 
 Other sources mention patches named "Dream", "Annihilate" and "YouWereWarned".
@@ -304,3 +314,26 @@ These are not in the current bank.
 | Decapitator | CamelCrusher Tube | Harmonic saturation with character modes |
 | Saturn | CamelCrusher filter + distortion | Multi-band saturation |
 | Trash 2 | CamelCrusher Mech | Aggressive destructive distortion |
+
+## 12. Verification status
+
+The research was re-checked against the reference sources before implementing
+Milestone 1:
+
+- **Distortion tables and formulas** were verified against
+  `soerenbnoergaard/reverse-camel` (`src/reverse-camel/ReverseCamel.cpp`). The
+  101-entry tables in `Source/Common/CamelCrusherCoeffs.cpp` are copied from
+  that file. `Tests/DSPTests.cpp` compares `Distortion + Master` against a
+  literal transcription of reverse-camel's `run()` loop.
+- **Filter and compressor** behaviour follows CrushClone's MIT-licensed
+  implementation (SVF low-pass with Q 0.7071–4.2071; peak-envelope soft-knee
+  compressor; parallel Phat path with a 120 Hz low shelf).
+- **Presets** were checked against CrushClone's `initPresets()`. The
+  `Telephone` flags were corrected (filter on, compressor off).
+- **Oversampling:** the claim that the original does not oversample was not
+  independently verified, but reverse-camel does not oversample and neither
+  does the current CrushJoints path.
+- **CrushClone's distortion is not table-based**; it uses `tanh` for Tube and
+  a hard clipper with a cubic knee for Mech. CrushJoints deliberately uses the
+  reverse-camel polynomial tables instead, because they are the closest
+  available model of the original.

@@ -17,7 +17,7 @@ public:
 private:
     void randomizeParameters();
 
-    CrushJointsAudioProcessor& processor;
+    CrushJointsAudioProcessor& processorRef;
     juce::AudioProcessorValueTreeState& apvts;
 
     // GUI Components

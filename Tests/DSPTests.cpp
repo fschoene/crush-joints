@@ -1,0 +1,471 @@
+#include <juce_dsp/juce_dsp.h>
+
+#include "DSP/Distortion.h"
+#include "DSP/LadderFilter.h"
+#include "DSP/Compressor.h"
+#include "DSP/Master.h"
+#include "Common/CamelCrusherCoeffs.h"
+#include "Common/Presets.h"
+
+#include <cmath>
+#include <iostream>
+#include <iterator>
+
+namespace
+{
+    int failures = 0;
+
+    void check(bool condition, const juce::String& message)
+    {
+        if (! condition)
+        {
+            ++failures;
+            std::cerr << "FAIL: " << message << '\n';
+        }
+    }
+
+    void checkClose(float actual, float expected, float tolerance, const juce::String& message)
+    {
+        if (std::abs(actual - expected) > tolerance)
+        {
+            ++failures;
+            std::cerr << "FAIL: " << message
+                      << " (expected " << expected << ", got " << actual << ")\n";
+        }
+    }
+
+    float rms(const juce::AudioBuffer<float>& buffer, int channel = 0)
+    {
+        double sum = 0.0;
+        const auto* data = buffer.getReadPointer(channel);
+
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+            sum += static_cast<double>(data[i]) * data[i];
+
+        return static_cast<float>(std::sqrt(sum / juce::jmax(1, buffer.getNumSamples())));
+    }
+
+    // Independent implementation of the reverse-camel reference shapers, used
+    // to verify that the Distortion class uses the tables and formulas
+    // correctly.
+    float referenceTube(float x, float amount)
+    {
+        const float position = juce::jlimit(0.0f, 100.0f, amount * 100.0f);
+        const int i0 = juce::jlimit(0, 100, static_cast<int>(position));
+        const int i1 = juce::jmin(i0 + 1, 100);
+        const float t = position - static_cast<float>(i0);
+
+        const float gain = CrushJoints::disttube_coeffs[i0][0]
+                         + t * (CrushJoints::disttube_coeffs[i1][0] - CrushJoints::disttube_coeffs[i0][0]);
+        const float a = CrushJoints::disttube_coeffs[i0][1]
+                      + t * (CrushJoints::disttube_coeffs[i1][1] - CrushJoints::disttube_coeffs[i0][1]);
+        const float b = CrushJoints::disttube_coeffs[i0][2]
+                      + t * (CrushJoints::disttube_coeffs[i1][2] - CrushJoints::disttube_coeffs[i0][2]);
+        const float c = CrushJoints::disttube_coeffs[i0][3]
+                      + t * (CrushJoints::disttube_coeffs[i1][3] - CrushJoints::disttube_coeffs[i0][3]);
+
+        const float s = gain * x;
+
+        if (s < -0.6f)
+            return a * s * s + b * s + c;
+
+        if (s > 0.6f)
+            return -a * s * s + b * s - c;
+
+        return s;
+    }
+
+    float referenceMech(float y, float amount)
+    {
+        const float position = juce::jlimit(0.0f, 100.0f, amount * 100.0f);
+        const int i0 = juce::jlimit(0, 100, static_cast<int>(position));
+        const int i1 = juce::jmin(i0 + 1, 100);
+        const float t = position - static_cast<float>(i0);
+
+        const float gain = CrushJoints::distmech_coeffs[i0][0]
+                         + t * (CrushJoints::distmech_coeffs[i1][0] - CrushJoints::distmech_coeffs[i0][0]);
+        const float b = CrushJoints::distmech_coeffs[i0][1]
+                      + t * (CrushJoints::distmech_coeffs[i1][1] - CrushJoints::distmech_coeffs[i0][1]);
+        const float c = CrushJoints::distmech_coeffs[i0][2]
+                      + t * (CrushJoints::distmech_coeffs[i1][2] - CrushJoints::distmech_coeffs[i0][2]);
+
+        const float s = gain * y;
+
+        if (s < -0.75f)
+            return b * s + c;
+
+        if (s > 0.75f)
+            return b * s - c;
+
+        return s;
+    }
+
+    // Complete Distortion -> Master reference path, mirroring the reverse-camel
+    // run() function (without its hard limiter, which is only relevant when the
+    // signal exceeds +/-2.0).
+    float referenceChain(float x, float tubeAmount, float mechAmount, float mix, float volumeDb)
+    {
+        const int tubeIndex = juce::jlimit(0, 100, static_cast<int>(tubeAmount * 100.0f));
+        const int mechIndex = juce::jlimit(0, 100, static_cast<int>(mechAmount * 100.0f));
+
+        const float* t = CrushJoints::disttube_coeffs[tubeIndex];
+        const float* m = CrushJoints::distmech_coeffs[mechIndex];
+
+        float s = t[0] * x;
+        float y = (s < -0.6f) ? (t[1] * s * s + t[2] * s + t[3])
+                : (s >  0.6f) ? (-t[1] * s * s + t[2] * s - t[3])
+                : s;
+
+        s = m[0] * y;
+        y = (s < -0.75f) ? (m[1] * s + m[2])
+          : (s >  0.75f) ? (m[1] * s - m[2])
+          : s;
+
+        y = mix * y + (1.0f - mix) * x;
+        return y * juce::Decibels::decibelsToGain(volumeDb);
+    }
+
+    void testCoefficientTables()
+    {
+        checkClose(CrushJoints::disttube_coeffs[0][0], 1.0f, 1.0e-6f, "tube entry 0 gain");
+        checkClose(CrushJoints::disttube_coeffs[100][0], 4.99996f, 1.0e-4f, "tube entry 100 gain");
+        checkClose(CrushJoints::distmech_coeffs[0][0], 1.0f, 1.0e-6f, "mech entry 0 gain");
+        checkClose(CrushJoints::distmech_coeffs[100][0], 11.0001f, 1.0e-3f, "mech entry 100 gain");
+        checkClose(CrushJoints::distmech_coeffs[100][2], -0.731707f, 1.0e-5f, "mech entry 100 c");
+    }
+
+    void testDistortionReference()
+    {
+        constexpr int numSamples = 64;
+        constexpr float inputLevels[] = { -1.0f, -0.5f, -0.1f, 0.0f, 0.1f, 0.5f, 0.9f };
+        const float amount = 0.73f;
+
+        CrushJoints::Distortion distortion;
+        distortion.prepareToPlay(48000.0);
+        distortion.setTubeOn(true);
+        distortion.setTubeAmount(amount);
+        distortion.setMechAmount(0.0f);
+
+        juce::AudioBuffer<float> buffer(1, numSamples);
+        buffer.clear();
+
+        for (int i = 0; i < numSamples; ++i)
+            buffer.setSample(0, i, inputLevels[i % static_cast<int>(std::size(inputLevels))]);
+
+        juce::AudioBuffer<float> expected;
+        expected.makeCopyOf(buffer);
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            const float tube = referenceTube(buffer.getSample(0, i), amount);
+            expected.setSample(0, i, referenceMech(tube, 0.0f));
+        }
+
+        distortion.processBlock(buffer);
+
+        for (int i = 0; i < numSamples; ++i)
+            checkClose(buffer.getSample(0, i), expected.getSample(0, i), 2.0e-5f,
+                       "distortion reference sample " + juce::String(i));
+    }
+
+    void testReferenceAudioPath()
+    {
+        struct Setting
+        {
+            float tube, mech, mix, volumeDb;
+        };
+
+        const Setting settings[] = {
+            { 0.0f, 0.0f, 1.0f, 0.0f },
+            { 0.5f, 0.0f, 1.0f, 0.0f },
+            { 0.5f, 0.5f, 1.0f, 0.0f },
+            { 1.0f, 1.0f, 1.0f, 0.0f },
+            { 0.0f, 1.0f, 1.0f, -6.0f },
+            { 0.75f, 0.25f, 0.5f, -3.0f },
+        };
+
+        constexpr int numSamples = 512;
+
+        for (const auto& setting : settings)
+        {
+            juce::AudioBuffer<float> input(2, numSamples);
+
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < numSamples; ++i)
+                    input.setSample(ch, i, 0.3f * std::sin(0.037f * static_cast<float>(i + ch * 13)));
+
+            juce::AudioBuffer<float> wet;
+            wet.makeCopyOf(input);
+
+            juce::AudioBuffer<float> dry;
+            dry.makeCopyOf(input);
+
+            CrushJoints::Distortion distortion;
+            distortion.prepareToPlay(48000.0);
+            distortion.setTubeOn(true);
+            distortion.setTubeAmount(setting.tube);
+            distortion.setMechAmount(setting.mech);
+            distortion.processBlock(wet);
+
+            CrushJoints::Master master;
+            master.prepareToPlay(48000.0, numSamples, 2);
+            master.setVolume(setting.volumeDb);
+            master.setMix(setting.mix);
+            master.setMasterOn(true);
+            master.processBlock(wet, &dry);
+
+            for (int i = 0; i < numSamples; ++i)
+            {
+                const float expected = referenceChain(input.getSample(0, i),
+                                                      setting.tube, setting.mech,
+                                                      setting.mix, setting.volumeDb);
+                checkClose(wet.getSample(0, i), expected, 2.0e-5f,
+                           "reference audio path");
+            }
+        }
+    }
+
+    void testDistortionTransparencyAndBypass()
+    {
+        CrushJoints::Distortion distortion;
+        distortion.prepareToPlay(48000.0);
+        distortion.setTubeAmount(0.0f);
+        distortion.setMechAmount(0.0f);
+
+        juce::AudioBuffer<float> buffer(2, 128);
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < 128; ++i)
+                buffer.setSample(ch, i, std::sin(0.05f * static_cast<float>(i)) * 0.5f);
+
+        juce::AudioBuffer<float> original;
+        original.makeCopyOf(buffer);
+
+        distortion.processBlock(buffer);
+
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < 128; ++i)
+                checkClose(buffer.getSample(ch, i), original.getSample(ch, i), 1.0e-3f,
+                           "zero-amount distortion transparency");
+
+        distortion.setTubeAmount(1.0f);
+        distortion.setMechAmount(1.0f);
+        distortion.setTubeOn(false);
+        original.makeCopyOf(buffer);
+        distortion.processBlock(buffer);
+
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < 128; ++i)
+                checkClose(buffer.getSample(ch, i), original.getSample(ch, i), 0.0f,
+                           "distortion bypass");
+    }
+
+    void testFilter()
+    {
+        constexpr double sampleRate = 48000.0;
+        constexpr int blockSize = 512;
+        const int totalSamples = static_cast<int>(sampleRate);
+
+        juce::AudioBuffer<float> highTone(1, totalSamples);
+        auto* data = highTone.getWritePointer(0);
+
+        for (int i = 0; i < totalSamples; ++i)
+            data[i] = 0.5f * std::sin(2.0f * juce::MathConstants<float>::pi * 10000.0f
+                                      * static_cast<float>(i) / static_cast<float>(sampleRate));
+
+        const float inputRms = rms(highTone);
+
+        CrushJoints::LadderFilter filter;
+        filter.prepareToPlay(sampleRate, blockSize, 1);
+        filter.setCutoff(1000.0f);
+        filter.setResonance(0.0f);
+        filter.setFilterOn(true);
+
+        // Process in blocks to mimic a host.
+        for (int offset = 0; offset < totalSamples; offset += blockSize)
+        {
+            const int count = juce::jmin(blockSize, totalSamples - offset);
+            juce::AudioBuffer<float> block(1, count);
+            block.copyFrom(0, 0, highTone, 0, offset, count);
+            filter.processBlock(block);
+            highTone.copyFrom(0, offset, block, 0, 0, count);
+        }
+
+        const float outputRms = rms(highTone);
+        check(outputRms < inputRms * 0.05f, "low-pass attenuates 10 kHz strongly");
+
+        // Bypass must be transparent.
+        juce::AudioBuffer<float> bypassBuffer(1, 256);
+        for (int i = 0; i < 256; ++i)
+            bypassBuffer.setSample(0, i, 0.25f * std::sin(0.1f * static_cast<float>(i)));
+
+        juce::AudioBuffer<float> original;
+        original.makeCopyOf(bypassBuffer);
+
+        filter.setFilterOn(false);
+        filter.processBlock(bypassBuffer);
+
+        for (int i = 0; i < 256; ++i)
+            checkClose(bypassBuffer.getSample(0, i), original.getSample(0, i), 0.0f,
+                       "filter bypass");
+    }
+
+    void testCompressor()
+    {
+        constexpr double sampleRate = 48000.0;
+        constexpr int blockSize = 512;
+        const int totalSamples = static_cast<int>(sampleRate);
+
+        juce::AudioBuffer<float> buffer(2, totalSamples);
+
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < totalSamples; ++i)
+                buffer.setSample(ch, i, 0.9f * std::sin(2.0f * juce::MathConstants<float>::pi
+                                                        * 220.0f * static_cast<float>(i)
+                                                        / static_cast<float>(sampleRate)));
+
+        CrushJoints::Compressor compressor;
+        compressor.prepareToPlay(sampleRate, blockSize, 2);
+        compressor.setAmount(1.0f);
+        compressor.setCompressorOn(true);
+        compressor.setPhatMode(false);
+
+        for (int offset = 0; offset < totalSamples; offset += blockSize)
+        {
+            const int count = juce::jmin(blockSize, totalSamples - offset);
+            juce::AudioBuffer<float> block(2, count);
+            for (int ch = 0; ch < 2; ++ch)
+                block.copyFrom(ch, 0, buffer, ch, offset, count);
+
+            compressor.processBlock(block);
+
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < count; ++i)
+                    check(std::isfinite(block.getSample(ch, i)), "compressor output is finite");
+        }
+
+        check(compressor.getGainReductionDb() < -5.0f, "compressor applies gain reduction");
+
+        // Bypass must be transparent.
+        juce::AudioBuffer<float> bypass(2, 128);
+        bypass.clear();
+        juce::AudioBuffer<float> original;
+        original.makeCopyOf(bypass);
+
+        compressor.setCompressorOn(false);
+        compressor.processBlock(bypass);
+
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < 128; ++i)
+                checkClose(bypass.getSample(ch, i), original.getSample(ch, i), 0.0f,
+                           "compressor bypass");
+    }
+
+    void testMaster()
+    {
+        CrushJoints::Master master;
+        master.prepareToPlay(48000.0, 512, 2);
+
+        // Volume + limiter
+        {
+            juce::AudioBuffer<float> buffer(2, 64);
+            buffer.clear();
+
+            for (int ch = 0; ch < 2; ++ch)
+            {
+                buffer.setSample(ch, 0, 1.0f);
+                buffer.setSample(ch, 1, -1.0f);
+                buffer.setSample(ch, 2, 0.001f);
+            }
+
+            master.setVolume(12.0f);
+            master.setMix(1.0f);
+            master.setMasterOn(true);
+            master.processBlock(buffer, nullptr);
+
+            checkClose(buffer.getSample(0, 0), 2.0f, 1.0e-6f, "limiter clamps positive peak");
+            checkClose(buffer.getSample(0, 1), -2.0f, 1.0e-6f, "limiter clamps negative peak");
+            check(buffer.getSample(0, 2) > 0.003f, "volume boost applied");
+        }
+
+        // Full bypass via master off
+        {
+            juce::AudioBuffer<float> wet(2, 32);
+            juce::AudioBuffer<float> dry(2, 32);
+
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < 32; ++i)
+                {
+                    wet.setSample(ch, i, 1.0f);
+                    dry.setSample(ch, i, 0.25f);
+                }
+
+            master.setVolume(12.0f);
+            master.setMix(0.0f);
+            master.setMasterOn(false);
+            master.processBlock(wet, &dry);
+
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < 32; ++i)
+                    checkClose(wet.getSample(ch, i), 0.25f, 1.0e-6f, "master off bypass");
+        }
+
+        // Dry/wet mix
+        {
+            juce::AudioBuffer<float> wet(1, 8);
+            juce::AudioBuffer<float> dry(1, 8);
+            wet.clear();
+            dry.clear();
+
+            for (int i = 0; i < 8; ++i)
+            {
+                wet.setSample(0, i, 1.0f);
+                dry.setSample(0, i, 0.0f);
+            }
+
+            master.setVolume(0.0f);
+            master.setMix(0.25f);
+            master.setMasterOn(true);
+            master.processBlock(wet, &dry);
+
+            for (int i = 0; i < 8; ++i)
+                checkClose(wet.getSample(0, i), 0.25f, 1.0e-6f, "dry/wet mix");
+        }
+    }
+
+    void testPresets()
+    {
+        CrushJoints::Presets presets;
+        presets.initPresets();
+
+        check(presets.getNumPresets() == 12, "12 presets are available");
+        check(presets.getPreset(0).name == "Default", "first preset is Default");
+        checkClose(presets.getPreset(11).tube, 1.0f, 0.0f, "Destroy Everything tube");
+        checkClose(presets.getPreset(11).mech, 1.0f, 0.0f, "Destroy Everything mech");
+
+        const auto telephone = presets.getPreset(10);
+        check(telephone.name == "Telephone", "Telephone preset name");
+        check(telephone.lpfOn, "Telephone filter is on");
+        check(! telephone.compOn, "Telephone compressor is off");
+    }
+}
+
+int main()
+{
+    testCoefficientTables();
+    testDistortionReference();
+    testReferenceAudioPath();
+    testDistortionTransparencyAndBypass();
+    testFilter();
+    testCompressor();
+    testMaster();
+    testPresets();
+
+    if (failures == 0)
+    {
+        std::cout << "All DSP tests passed.\n";
+        return 0;
+    }
+
+    std::cerr << failures << " test(s) failed.\n";
+    return 1;
+}

@@ -15,12 +15,14 @@ short and links here.
 
 ## Current snapshot
 
-- **Build:** working. VST3, AU and Standalone are produced on macOS with
-  CMake + a local JUCE 9 checkout.
-- **Runtime:** the Standalone app launches and the editor is interactive.
-- **DSP:** the signal chain is wired but every DSP module is still a
-  pass-through stub. The plugin currently does not colour the audio.
-- **Validation:** no pluginval/AU validation or DAW testing has been run yet.
+- **Build:** working. Clean build produces VST3, AU and Standalone on macOS
+  with CMake + a local JUCE 9 checkout.
+- **DSP:** all four modules implemented (Tube/Mech tables, SVF low-pass,
+  one-knob compressor + Phat, master limiter). Offline tests pass, including a
+  comparison against the reverse-camel reference path.
+- **GUI:** interactive, but value readout, level meter, MIDI Learn, right-click
+  knob modes and A/B controls are still missing.
+- **Validation:** `pluginval`, `auval` and DAW testing have not been run yet.
 
 See [STATUS.md](STATUS.md) for the detailed breakdown.
 
