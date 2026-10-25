@@ -1,0 +1,306 @@
+# CamelCrusher Research Findings
+
+Background research used to design CrushJoints. This document describes the
+**reference behaviour** we are aiming for. For the current implementation
+state, see [STATUS.md](STATUS.md).
+
+## 1. Overview
+
+**CamelCrusher** is a free multi-effect plugin by **Camel Audio** (founded by
+Ben Gillett). Released as v1.0 around 2007, it was the "little brother" of the
+paid **CamelPhat** multi-band distortion/compressor. Camel Audio was acquired
+by Apple in 2015 and the plugins were discontinued; CamelPhat's technology was
+folded into Logic Pro's **Phat FX**.
+
+CamelCrusher is a single-window, four-module colouring effect: intentionally
+simple, with one knob per parameter and no hidden menus. Its character comes
+from the interaction between Tube distortion, Mech distortion, a low-pass
+filter and a one-knob compressor with Phat mode. The original shipped as VST,
+AU and AAX for 32- and 64-bit Windows and macOS.
+
+## 2. Signal chain
+
+Confirmed by the original manual, the CrushClone recreation and black-box
+analysis:
+
+```
+Audio In
+  → Distortion (Tube + Mech)
+  → Low-Pass Filter
+  → Compressor (+ Phat)
+  → Master (Volume + Mix + limiter)
+  → Audio Out
+```
+
+Each module has an individual blue On/Off toggle. Turning a module off bypasses
+it. Turning **Master** off bypasses the whole plugin, leaving only the dry
+input.
+
+## 3. Distortion
+
+### Parameters
+
+| Control | Range | Default | Description |
+|---------|-------|---------|-------------|
+| TUBE | 0–100 | 0 | Tube-style saturation amount |
+| MECH | 0–100 | 0 | Mechanical/harsh distortion amount |
+
+Tube and Mech are not exclusive; they can be blended. Most of CamelCrusher's
+character lives in that blend.
+
+### Tube distortion (DistTube)
+
+The reverse-camel project (soerenbnoergaard) extracted the waveshaper by
+amplitude-sweep analysis. The reference uses a **101-entry lookup table**
+indexed by the TUBE knob (0–100). Each entry stores a gain plus four
+coefficients `{gain, a, b, c}`.
+
+Per sample:
+
+1. `s = gain * x`, where gain maps 0–100 to approximately `1.0 … 5.0`.
+2. Three-region piecewise function:
+   - `s < -0.6`: `y = a·s² + b·s + c`
+   - `s >  0.6`: `y = -a·s² + b·s - c` (asymmetric)
+   - otherwise: `y = s`
+
+Properties:
+
+- Frequency-independent (verified from 20 Hz to 20 kHz).
+- Asymmetric, which adds even-order harmonics (the "warm" tube character).
+- At TUBE = 0 the gain is 1.0 and the curve is essentially linear.
+- At TUBE = 100 the gain is about 5.0, pushing the signal into saturation.
+
+Reference entry 0: `{1.0, -0.000208, 0.9997, -0.000098}`.
+Reference entry 100: gain ≈ 5.0, full saturation.
+
+### Mech distortion (DistMech)
+
+Applied after Tube, also using a **101-entry table** with three coefficients
+`{gain, b, c}`.
+
+Per sample:
+
+1. `s = gain * y`, where `y` is the Tube output and gain maps 0–100 to
+   approximately `1.0 … 11.0`.
+2. Three-region piecewise function:
+   - `s < -0.75`: `y = b·s + c`
+   - `s >  0.75`: `y = b·s - c` (asymmetric)
+   - otherwise: `y = s`
+
+Properties:
+
+- Linear/`hard-clip`-style knees, unlike Tube's quadratic soft clipping.
+- Asymmetric offsets create even harmonics on top of the odd harmonics.
+- At MECH = 0 it is near-linear (`{1, 1.0, 0.000054}`).
+- At MECH = 100 it is heavy clipping (gain ≈ 11).
+
+### Sound character
+
+| Distortion | Character | Typical use |
+|------------|-----------|-------------|
+| Tube | Warm, smooth, analog-style saturation; subtle even harmonics | Synths, vocals, master bus at 2–30% |
+| Mech | Fizzy, mechanical, aggressive; destroys the signal at high settings | Kicks, aggressive synths, risers |
+| Blend | Gritty, faintly analog character that is hard to get from stock waveshapers | Most production use |
+
+High distortion settings raise the level considerably; the Master Volume is
+needed to compensate.
+
+### Oversampling
+
+The original does **not** oversample, so Mech can alias at high settings.
+Recreations such as CrushClone add 4× oversampling as a deliberate
+improvement. CrushJoints prepares a 4× oversampling wrapper but does not
+currently route audio through it.
+
+## 4. Filter
+
+| Control | Range | Default | Description |
+|---------|-------|---------|-------------|
+| CUTOFF | 20–20,000 Hz | 20,000 (open) | Low-pass cutoff |
+| RES | 0–100 (≈0–5 effective Q) | 0 | Resonance around the cutoff |
+
+Characteristics:
+
+- 24 dB/octave (4-pole) low-pass, described as "warm, smooth, analogue-style"
+  with "buckets of resonance".
+- Cutoff is reported as 80 Hz–16 kHz in one YouTube analysis; the manual range
+  appears to be 20 Hz–20 kHz.
+- Resonance emphasises the cutoff and can be pushed into a scream; it has a
+  slightly analog character.
+- The filter's job is cleanup: distortion creates new high harmonics and the
+  filter tames them.
+
+The original is a resonant low-pass; CrushClone models it with JUCE's
+`StateVariableTPTFilter` (ZDF/TPT SVF) in low-pass mode. Reverse-camel does not
+implement the filter. The 4-pole slope and "warm" description suggest a
+Moog-style ladder or a state-variable design with nonlinear resonance.
+
+## 5. Compressor
+
+| Control | Range | Default | Description |
+|---------|-------|---------|-------------|
+| AMOUNT | 0–100 | 0 | Compression intensity / perceived loudness |
+| PHAT MODE | On/Off | Off | Harder parallel compression + bass thickness |
+
+Characteristics:
+
+- The manual describes a "sophisticated and responsive soft-limiting
+  compressor algorithm, modelled after classic analogue designs".
+- One knob drives threshold, ratio, attack, release and makeup gain together.
+  - Amount 0 → threshold 0 dB, ratio 1:1 (no compression).
+  - Amount 100 → threshold ≈ -30 dB, ratio ≈ 8:1 (heavy squash).
+- Auto makeup gain rises with Amount.
+- Not a transparent utility compressor: it is a density/pump tool intended for
+  already-distorted signals.
+
+### Phat mode
+
+- Parallel compression plus a low-shelf boost.
+- The dry signal is blended with a heavily compressed, low-shelf-boosted copy.
+- Low shelf: about 120 Hz, +8 dB (per CrushClone analysis).
+- The blend/fatness increases with Amount.
+- Can crackle at high levels on clean signals; the manual recommends turning it
+  off for clean guitar.
+- Almost always left on for 808s and basses.
+
+## 6. Master
+
+| Control | Range | Default | Description |
+|---------|-------|---------|-------------|
+| ON/OFF | Toggle | On | Bypasses the entire plugin (dry only) |
+| VOLUME | -51 to 0 dB (reference) | 0 (unity) | Output level |
+| MIX | 0–100% | 100% (wet) | Dry/wet blend |
+
+Notes:
+
+- Master On/Off is a full bypass, unlike the per-module switches.
+- Volume can go from silence to unity and is used for gain staging.
+- Mix is arguably the most important control; 30–60% often sounds better than
+  fully wet and enables parallel processing from one plugin.
+- The original applies hard output limiting, which can distort hot signals.
+  Turning down Volume or disabling Phat resolves it.
+- CrushClone adds a safety limiter at ±2.0 (8× headroom) plus
+  denormal/NaN/Inf killing; CrushJoints plans to do the same.
+
+## 7. UI reference
+
+```
+┌────────────────────────────────────────────────────────┐
+│  PATCH SELECTOR   [Preset Name]        RANDOMIZE       │
+│                                                          │
+│  [ON]  DISTORTION                                        │
+│          TUBE  [knob]    MECH  [knob]                    │
+│                                                          │
+│  [ON]  FILTER                                            │
+│          CUTOFF  [knob]  RES  [knob]                     │
+│                                                          │
+│  [ON]  COMPRESSOR                                        │
+│          AMOUNT  [knob]  PHAT MODE  [button]             │
+│                                                          │
+│  [ON]  MASTER                                            │
+│          VOLUME  [knob]  MIX  [knob]                     │
+└────────────────────────────────────────────────────────┘
+```
+
+Reference features:
+
+- **Patch selector:** preset dropdown with up/down navigation and the current
+  preset name.
+- **Randomize:** assigns new values to every parameter in every *active*
+  module, and avoids settings that produce no sound.
+- **On/Off switches:** small blue toggles at the top-left of each module;
+  illuminated when active.
+- **Value readout:** shows the preset name, temporarily shows a knob's value
+  while it is adjusted; clicking it opens preset load/save.
+- **Output meter:** indicates clipping.
+- **Knob modes:** right-click menu for Linear/Circular drag, MIDI Learn and
+  value display.
+- **Presets:** the original has ~20 built-in patches and supports `.FXP`/`.FXB`
+  import/export.
+
+## 8. Presets
+
+The 12 patches used by CrushClone and CrushJoints:
+
+| Preset | Tube | Mech | Cutoff | Res | Amount | Phat | Filter on | Volume (dB) | Mix |
+|--------|------|------|--------|-----|--------|------|-----------|-------------|-----|
+| Default | 0 | 0 | 20000 | 0 | 0 | off | no | 0 | 100 |
+| DRM BigBadBeat | 50 | 30 | 4000 | 20 | 60 | on | yes | 0 | 100 |
+| BAS FatSub | 70 | 0 | 800 | 30 | 50 | on | yes | 0 | 100 |
+| GTR Crunch | 40 | 50 | 6000 | 10 | 30 | off | yes | 0 | 100 |
+| SYN WarmPad | 30 | 0 | 3000 | 40 | 20 | off | yes | 0 | 100 |
+| VOX Gritty | 60 | 20 | 5000 | 15 | 40 | off | yes | 0 | 100 |
+| MAS Loudener | 20 | 10 | 12000 | 0 | 70 | on | yes | +2 | 100 |
+| DRM LoFiHit | 80 | 60 | 2000 | 50 | 40 | off | yes | -2 | 100 |
+| SYN Screamer | 30 | 80 | 7000 | 60 | 50 | on | yes | -1 | 100 |
+| Gentle Warmth | 20 | 0 | 15000 | 0 | 10 | off | yes | 0 | 50 |
+| Telephone | 10 | 0 | 3500 | 30 | 0 | off | no | 0 | 100 |
+| Destroy Everything | 100 | 100 | 1000 | 70 | 80 | on | yes | -4 | 100 |
+
+Other sources mention patches named "Dream", "Annihilate" and "YouWereWarned".
+These are not in the current bank.
+
+## 9. References
+
+1. **CrushClone** (doxiedevops) — JUCE/C++ recreation.
+   Full four-module implementation, 4× oversampling, ZDF SVF filter,
+   one-knob compressor, Phat mode, WebUI editor, VST3/AU on macOS and VST3 on
+   Windows. The preset table and parameter mappings used here originate from
+   this project.
+2. **Reverse Camel** (soerenbnoergaard) — DPF/C++ black-box reverse
+   engineering. Most faithful source for the distortion coefficient tables;
+   implements only Distortion and Master. Includes a Jupyter notebook with the
+   amplitude-sweep and curve-fitting methodology.
+3. **Logic Pro Phat FX** — Apple's integration of CamelPhat, the paid sibling.
+   Not identical to CamelCrusher but architecturally related.
+
+## 10. DSP implementation targets
+
+### Tube
+
+- Piecewise polynomial waveshaper with a 101-entry table.
+- Linear for `|x| ≤ 0.6`, quadratic saturation outside.
+- Asymmetric upper/lower coefficients.
+- Gain 1.0×–5.0× across the knob range.
+
+### Mech
+
+- Piecewise linear waveshaper with a 101-entry table.
+- Linear for `|x| ≤ 0.75`, linear saturation outside.
+- Asymmetric `+c`/`-c` offsets.
+- Gain 1.0×–11.0×.
+- CrushClone adds pre-emphasis (about +200 Hz and +4 kHz shelves) before
+  clipping; evaluate whether that belongs in a faithful clone.
+
+### Filter
+
+- 24 dB/octave low-pass, 20 Hz–20 kHz.
+- Resonance 0 to about 5, nonlinear at high settings.
+- ZDF/TPT SVF is the recommended model.
+
+### Compressor
+
+- One-knob soft-knee compressor with auto gain.
+- Threshold 0 → -30 dB, ratio 1:1 → 8:1, knee ≈ 6 dB.
+- Attack 1–10 ms, release 50–150 ms, both faster at higher Amount.
+- Makeup gain up to +12 dB.
+- Phat: parallel compression + 120 Hz low shelf (+8 dB).
+
+### Master
+
+- Hard safety limiter at ±2.0.
+- Denormal and NaN/Inf flushing.
+- Reference volume range -51 to 0 dB (current code uses -24 to +12 dB; see
+  [STATUS.md](STATUS.md)).
+- Dry/wet mix, default 100% wet.
+
+## 11. Similar effects
+
+| Plugin | Similar to | Notes |
+|--------|------------|-------|
+| CamelPhat | CamelCrusher's bigger brother | Four distortions, three filters, LFOs, envelope follower, Magic EQ |
+| Logic Pro Phat FX | CamelPhat | Apple's integrated version |
+| OTT | CamelCrusher compressor | Aggressive upward compression |
+| Decapitator | CamelCrusher Tube | Harmonic saturation with character modes |
+| Saturn | CamelCrusher filter + distortion | Multi-band saturation |
+| Trash 2 | CamelCrusher Mech | Aggressive destructive distortion |
