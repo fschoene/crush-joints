@@ -92,7 +92,11 @@ bool CrushJointsAudioProcessor::isBusesLayoutSupported(const BusesLayout& layout
 //==============================================================================
 void CrushJointsAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
-    // For now, just set up a placeholder
+    // Setup all DSP modules
+    distortion.prepareToPlay(sampleRate);
+    filter.prepareToPlay(sampleRate);
+    compressor.prepareToPlay(sampleRate);
+    oversampler.prepareToPlay(sampleRate, samplesPerBlock);
 }
 
 void CrushJointsAudioProcessor::releaseResources()
@@ -104,19 +108,16 @@ void CrushJointsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer)
 {
     juce::ScopedNoDenormals noDenormals;
     
-    // Process audio through distortion, filter, compressor, and master chain
-    // This implementation will be fully fleshed out in later phases
+    // For now just process through the modules in sequence to show the structure
+    // This will be fully implemented in the next phases
     
-    // For now, we're building the framework structure for Phase 2
-    
-    // Play through distortion with current settings
-    // Use the distortion module that is being implemented in Phase 2
+    // Apply distortion module
     // distortion.processBlock(buffer);
     
-    // Apply filter
+    // Apply filter module  
     // filter.processBlock(buffer);
     
-    // Apply compressor
+    // Apply compressor module
     // compressor.processBlock(buffer);
     
     // Apply master processing (volume, mix, etc.)

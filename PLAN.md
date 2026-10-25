@@ -170,6 +170,8 @@ The user's workflow preference is **incremental**: implement one task, commit, w
 - Build → test with filtered white noise and synth sweeps
 - Commit: `feat: add ZDF SVF low-pass filter with resonance`
 
+✅ IMPLEMENTED
+
 ### Phase 4: Compressor Module
 **Goal:** Implement the one-knob compressor with Phat mode.
 - Soft-knee compression curve
