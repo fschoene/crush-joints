@@ -1,30 +1,37 @@
-cmake_minimum_required(VERSION 3.15)
-project(CrushJoints VERSION 1.0.0)
+cmake_minimum_required(VERSION 3.22)
+project(CrushJoints VERSION 1.0.0 LANGUAGES C CXX)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Fetch JUCE
-include(FetchContent)
-FetchContent_Declare(
-    JUCE
-    GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
-    GIT_TAG        v9.0.0
-)
-FetchContent_MakeAvailable(JUCE)
+# Path to a local JUCE checkout. Override with:
+#   cmake -B build -DJUCE_ROOT=/path/to/JUCE
+set(JUCE_ROOT "/Volumes/WDB/user/flo/JUCE" CACHE PATH "Path to the JUCE source tree")
+
+if(NOT EXISTS "${JUCE_ROOT}/CMakeLists.txt")
+    message(FATAL_ERROR
+        "JUCE was not found at '${JUCE_ROOT}'. "
+        "Pass -DJUCE_ROOT=/path/to/JUCE when configuring.")
+endif()
+
+add_subdirectory("${JUCE_ROOT}" JUCE-Build)
 
 # Create the plugin
 juce_add_plugin(CrushJoints
     COMPANY_NAME "CrushJoints"
     PLUGIN_NAME "CrushJoints"
     PLUGIN_CODE "CJTS"
-    IS_SYNTH false
-    NEEDS_MIDI_INPUT false
-    NEEDS_MIDI_OUTPUT false
-    IS_VALUE_TREE_STATE true
-    VST3_CATEGORY "Filter"
+    PLUGIN_MANUFACTURER_CODE "Crsh"
+    IS_SYNTH FALSE
+    NEEDS_MIDI_INPUT FALSE
+    NEEDS_MIDI_OUTPUT FALSE
+    IS_MIDI_EFFECT FALSE
+    VST3_CATEGORY "Fx"
+    VST3_SUBCATEGORY "Filter"
     AU_MAIN_COMPONENT_CLASS_NAME CrushJointsEditor
+    FORMATS VST3 AU Standalone
 )
 
 # Add JUCE modules
@@ -33,6 +40,7 @@ target_compile_definitions(CrushJoints
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
         JUCE_STRICT_MODE=1
+        JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
 # Add JUCE modules for audio processing and GUI
@@ -62,6 +70,7 @@ target_sources(CrushJoints
         Source/DSP/Distortion.cpp
         Source/DSP/LadderFilter.cpp
         Source/DSP/Compressor.cpp
+        Source/DSP/Master.cpp
         Source/Common/CamelCrusherCoeffs.cpp
         Source/Common/Presets.cpp
 )
@@ -72,5 +81,4 @@ target_include_directories(CrushJoints
         Source
         Source/DSP
         Source/Common
-        ${JUCE_MODULES_DIR}
 )

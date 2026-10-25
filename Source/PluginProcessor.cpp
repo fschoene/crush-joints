@@ -3,7 +3,9 @@
 
 //==============================================================================
 CrushJointsAudioProcessor::CrushJointsAudioProcessor()
-    : AudioProcessor(BusesLayout().withOutputs({ AudioChannelSet::stereo() })),
+    : AudioProcessor(BusesProperties()
+                         .withInput("Input", juce::AudioChannelSet::stereo(), true)
+                         .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, nullptr, "parameters", 
            {
                 // Distortion parameters
@@ -80,10 +82,10 @@ double CrushJointsAudioProcessor::getTailLengthSeconds() const
 
 bool CrushJointsAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
-    if (layouts.getMainOutputChannelSet() != AudioChannelSet::stereo())
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
-    if (layouts.getMainInputChannelSet() != AudioChannelSet::stereo())
+    if (layouts.getMainInputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
     return true;
@@ -105,19 +107,33 @@ void CrushJointsAudioProcessor::releaseResources()
 }
 
 //==============================================================================
-void CrushJointsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer)
+void CrushJointsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
-    
-    // For now just process through the modules in sequence to demonstrate structure
-    // This would fulfill the complete signal chain:
-    // Distortion → Filter → Compressor → Master
-    
-    // In a full implementation:
-    // distortion.processBlock(buffer);
-    // filter.processBlock(buffer); 
-    // compressor.processBlock(buffer);
-    // master.processBlock(buffer);
+    juce::ignoreUnused(midiMessages);
+
+    // Push the current parameter values into the DSP modules.
+    distortion.setTubeAmount(tubeParam->get());
+    distortion.setMechAmount(mechParam->get());
+    distortion.setTubeOn(tubeOnParam->get());
+
+    filter.setCutoff(cutoffParam->get());
+    filter.setResonance(resParam->get());
+    filter.setFilterOn(lpfOnParam->get());
+
+    compressor.setAmount(amountParam->get());
+    compressor.setPhatMode(phatParam->get());
+    compressor.setCompressorOn(compOnParam->get());
+
+    master.setVolume(volumeParam->get());
+    master.setMix(mixParam->get());
+    master.setMasterOn(masterOnParam->get());
+
+    // Complete signal chain: Distortion -> Filter -> Compressor -> Master
+    distortion.processBlock(buffer);
+    filter.processBlock(buffer);
+    compressor.processBlock(buffer);
+    master.processBlock(buffer);
 }
 
 //==============================================================================
@@ -146,20 +162,22 @@ void CrushJointsAudioProcessor::setCurrentProgram(int index)
 {
     if (index >= 0 && index < getNumPrograms())
     {
-        // Load preset values
-        auto preset = presets.getPreset(index);
-        tubeParam->setValueNotifyingHost(preset.tube);
-        mechParam->setValueNotifyingHost(preset.mech);
-        tubeOnParam->setValueNotifyingHost(preset.tubeOn);
-        cutoffParam->setValueNotifyingHost(preset.cutoff);
-        resParam->setValueNotifyingHost(preset.res);
-        lpfOnParam->setValueNotifyingHost(preset.lpfOn);
-        amountParam->setValueNotifyingHost(preset.amount);
-        phatParam->setValueNotifyingHost(preset.phat);
-        compOnParam->setValueNotifyingHost(preset.compOn);
-        volumeParam->setValueNotifyingHost(preset.volume);
-        mixParam->setValueNotifyingHost(preset.mix);
-        masterOnParam->setValueNotifyingHost(preset.masterOn);
+        // Load preset values. The AudioParameter* assignment operators take
+        // denormalised values and handle the normalisation internally.
+        const auto preset = presets.getPreset(index);
+
+        *tubeParam     = preset.tube;
+        *mechParam     = preset.mech;
+        *tubeOnParam   = preset.tubeOn;
+        *cutoffParam   = preset.cutoff;
+        *resParam      = preset.res;
+        *lpfOnParam    = preset.lpfOn;
+        *amountParam   = preset.amount;
+        *phatParam     = preset.phat;
+        *compOnParam   = preset.compOn;
+        *volumeParam   = preset.volume;
+        *mixParam      = preset.mix;
+        *masterOnParam = preset.masterOn;
     }
 }
 
@@ -192,4 +210,12 @@ void CrushJointsAudioProcessor::setStateInformation(const void* data, int sizeIn
     std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
     if (xmlState.get() != nullptr)
         apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
+}
+
+//==============================================================================
+// This creates new instances of the plugin. It is required by the JUCE
+// plugin wrappers and must have exactly this signature.
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+{
+    return new CrushJointsAudioProcessor();
 }

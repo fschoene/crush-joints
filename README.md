@@ -15,14 +15,29 @@ CrushJoints is a faithful recreation of the CamelCrusher multi-effect plugin, fe
 
 ### Prerequisites
 - Xcode Command Line Tools
-- CMake (install via Homebrew: `brew install cmake`)
+- CMake 3.22 or newer (install via Homebrew: `brew install cmake`)
+- A JUCE 8/9 source checkout (tested with JUCE 9.0.4)
 
 ### Build Steps
 1. Clone the repository
-2. Run `cmake -B build`
-3. Run `cmake --build build`
+2. Point CMake at your JUCE checkout (defaults to `/Volumes/WDB/user/flo/JUCE`):
+   ```sh
+   cmake -B build -DCMAKE_BUILD_TYPE=Release -DJUCE_ROOT=/path/to/JUCE
+   ```
+3. Build:
+   ```sh
+   cmake --build build --config Release -j8
+   ```
 
-The built plugin will be in `build/bin/` or `build/CrushJoints.artifact/` depending on your platform.
+On macOS the built artefacts are in `build/CrushJoints_artefacts/Release/`:
+
+- `VST3/CrushJoints.vst3`
+- `AU/CrushJoints.component`
+- `Standalone/CrushJoints.app`
+
+Copy the VST3/AU bundles to `~/Library/Audio/Plug-Ins/VST3/` and
+`~/Library/Audio/Plug-Ins/Components/` respectively, or run the standalone app
+directly.
 
 ## Development
 

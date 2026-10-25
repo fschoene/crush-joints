@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/Volumes/WDB/user/flo/Code/crush-joints/build/_deps/juce-subbuild/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

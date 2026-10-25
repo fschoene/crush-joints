@@ -20,9 +20,8 @@ namespace CrushJoints
         // Set default parameters
         compressor.setThreshold(0.0f);
         compressor.setRatio(1.0f);
-        compressor.setAttackTime(10.0f);
-        compressor.setReleaseTime(100.0f);
-        compressor.setMakeupGain(0.0f);
+        compressor.setAttack(10.0f);
+        compressor.setRelease(100.0f);
         
         // Setup phat gain
         phatGain.setGainDecibels(8.0f); // +8dB boost

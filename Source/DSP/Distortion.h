@@ -41,8 +41,8 @@ namespace CrushJoints
         bool isA = true;  // Current active state
         
         // Polynomial coefficient tables (from reverse-camel)
-        static const float disttube_coeffs[101][4];
-        static const float distmech_coeffs[101][3];
+        static const float disttube_coeffs[201][4];
+        static const float distmech_coeffs[402][3];
         
         // Internal processing methods
         float tubeDistort(float x, float tubeNormalized);

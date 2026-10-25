@@ -3,7 +3,7 @@
 namespace CrushJoints
 {
     // Polynomial coefficient tables (exact copy from reverse-camel)
-    const float Distortion::disttube_coeffs[101][4] = {
+    const float Distortion::disttube_coeffs[201][4] = {
         {1.000000f, -0.000208f, 0.999700f, -0.000098f},
         {1.030500f, -0.000210f, 0.999610f, -0.000100f},
         {1.061000f, -0.000212f, 0.999520f, -0.000102f},
@@ -207,7 +207,7 @@ namespace CrushJoints
         {7.100000f, -0.000608f, 0.981700f, -0.000498f}
     };
     
-    const float Distortion::distmech_coeffs[101][3] = {
+    const float Distortion::distmech_coeffs[402][3] = {
         {1.000000f, 1.000000f, 0.000054f},
         {1.000200f, 1.000100f, 0.000054f},
         {1.000400f, 1.000200f, 0.000054f},

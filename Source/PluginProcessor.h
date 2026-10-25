@@ -4,6 +4,7 @@
 #include "DSP/Distortion.h"
 #include "DSP/LadderFilter.h"
 #include "DSP/Compressor.h"
+#include "DSP/Master.h"
 #include "DSP/Oversampler.h"
 #include "Common/Presets.h"
 
@@ -63,6 +64,9 @@ public:
     juce::AudioParameterFloat* volumeParam;
     juce::AudioParameterFloat* mixParam;
     juce::AudioParameterBool* masterOnParam;
+
+    //==============================================================================
+    juce::AudioProcessorValueTreeState& getAPVTS() noexcept { return apvts; }
 
 private:
     //==============================================================================

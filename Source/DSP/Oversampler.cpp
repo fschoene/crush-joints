@@ -12,17 +12,30 @@ namespace CrushJoints
 
     void Oversampler::prepareToPlay(double sampleRate, int samplesPerBlock)
     {
-        oversampler.prepare({static_cast<float>(sampleRate), 2, 1});
-        oversampler.setOversamplingFactor(juce::dsp::Oversampling<float>::factor_4);
+        juce::ignoreUnused(sampleRate);
+
+        // 2 channels, factor 2 => 4x oversampling.
+        oversampler = std::make_unique<juce::dsp::Oversampling<float>>(
+            2,
+            2,
+            juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR,
+            true,
+            false);
+
+        oversampler->initProcessing(static_cast<size_t>(samplesPerBlock));
         prepared = true;
     }
 
     void Oversampler::processBlock(juce::AudioBuffer<float>& buffer)
     {
-        if (prepared)
-        {
-            // In a real implementation, this would upsample, process, then downsample.
-            // For now, just pass through
-        }
+        if (!prepared || oversampler == nullptr)
+            return;
+
+        // Round-trip the buffer through the oversampler. Any processing that
+        // benefits from a higher sample rate can be inserted between the
+        // up- and down-sampling calls.
+        auto block = juce::dsp::AudioBlock<float>(buffer);
+        oversampler->processSamplesUp(block);
+        oversampler->processSamplesDown(block);
     }
 }
