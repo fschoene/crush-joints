@@ -145,7 +145,7 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
     addToContent(tubeLabel);
     addToContent(mechLabel);
 
-    configureToggle(tubeOnButton, "On");
+    configureToggle(tubeOnButton, "ON");
     addToContent(tubeOnButton);
 
     tubeAttachment   = std::make_unique<SliderAttachment>(apvts, "tube", tubeSlider);
@@ -157,7 +157,7 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
     addToContent(filterGroup);
 
     configureKnob(cutoffSlider, "Cutoff frequency");
-    configureKnob(resSlider, "Resonance");
+    configureKnob(resSlider, "Resonance (most audible below 18 kHz)");
     configureLabel(cutoffLabel, "CUTOFF");
     configureLabel(resLabel, "RES");
     cutoffSlider.setSkewFactorFromMidPoint(1000.0);
@@ -166,7 +166,7 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
     addToContent(cutoffLabel);
     addToContent(resLabel);
 
-    configureToggle(lpfOnButton, "On");
+    configureToggle(lpfOnButton, "ON");
     addToContent(lpfOnButton);
 
     cutoffAttachment = std::make_unique<SliderAttachment>(apvts, "cutoff", cutoffSlider);
@@ -182,8 +182,8 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
     addToContent(amountSlider);
     addToContent(amountLabel);
 
-    configureToggle(phatButton, "Phat");
-    configureToggle(compOnButton, "On");
+    configureToggle(phatButton, "PHAT");
+    configureToggle(compOnButton, "ON");
     addToContent(phatButton);
     addToContent(compOnButton);
 
@@ -204,7 +204,7 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
     addToContent(volumeLabel);
     addToContent(mixLabel);
 
-    configureToggle(masterOnButton, "On");
+    configureToggle(masterOnButton, "ON");
     addToContent(masterOnButton);
 
     volumeAttachment   = std::make_unique<SliderAttachment>(apvts, "volume", volumeSlider);
@@ -237,6 +237,21 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
                                      juce::dontSendNotification);
         };
     };
+
+    auto hookToggleReadout = [this](juce::ToggleButton& button, const juce::String& name)
+    {
+        button.onClick = [this, &button, name]
+        {
+            valueReadout.setText(name + ": " + (button.getToggleState() ? "ON" : "OFF"),
+                                 juce::dontSendNotification);
+        };
+    };
+
+    hookToggleReadout(tubeOnButton, "DISTORTION");
+    hookToggleReadout(lpfOnButton, "FILTER");
+    hookToggleReadout(compOnButton, "COMPRESSOR");
+    hookToggleReadout(phatButton, "PHAT");
+    hookToggleReadout(masterOnButton, "MASTER");
 
     hookReadout(tubeSlider, "TUBE");
     hookReadout(mechSlider, "MECH");
@@ -378,7 +393,7 @@ void CrushJointsAudioProcessorEditor::layoutContent()
         group.setBounds(bounds);
         auto content = bounds.reduced(10).withTrimmedTop(20);
 
-        auto toggleArea = content.removeFromBottom(28);
+        auto toggleArea = content.removeFromTop(26);
         if (toggle2 != nullptr)
         {
             toggle1.setBounds(toggleArea.removeFromLeft(toggleArea.getWidth() / 2).reduced(2, 0));
@@ -386,9 +401,10 @@ void CrushJointsAudioProcessorEditor::layoutContent()
         }
         else
         {
-            toggle1.setBounds(toggleArea.withSizeKeepingCentre(
-                juce::jmin(toggleArea.getWidth(), 90), 24));
+            toggle1.setBounds(toggleArea.removeFromLeft(90).reduced(2, 0));
         }
+
+        content.removeFromTop(2);
 
         if (slider2 != nullptr)
         {

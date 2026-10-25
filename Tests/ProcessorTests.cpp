@@ -145,6 +145,150 @@ namespace
         }
     }
 
+    juce::AudioBuffer<float> renderProcessor(CrushJointsAudioProcessor& processor,
+                                             const juce::AudioBuffer<float>& input)
+    {
+        juce::AudioBuffer<float> output;
+        output.makeCopyOf(input);
+
+        constexpr int blockSize = 512;
+        juce::MidiBuffer midi;
+
+        for (int offset = 0; offset < output.getNumSamples(); offset += blockSize)
+        {
+            const int count = juce::jmin(blockSize, output.getNumSamples() - offset);
+            juce::AudioBuffer<float> block(output.getNumChannels(), count);
+
+            for (int ch = 0; ch < output.getNumChannels(); ++ch)
+                block.copyFrom(ch, 0, output, ch, offset, count);
+
+            processor.processBlock(block, midi);
+
+            for (int ch = 0; ch < output.getNumChannels(); ++ch)
+                output.copyFrom(ch, offset, block, ch, 0, count);
+        }
+
+        return output;
+    }
+
+    float rmsOfBuffer(const juce::AudioBuffer<float>& buffer)
+    {
+        double sum = 0.0;
+        const int count = buffer.getNumSamples() * buffer.getNumChannels();
+
+        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+                sum += static_cast<double>(buffer.getSample(ch, i))
+                     * static_cast<double>(buffer.getSample(ch, i));
+
+        return static_cast<float>(std::sqrt(sum / juce::jmax(1, count)));
+    }
+
+    void testProcessorDspWiring()
+    {
+        constexpr double sampleRate = 48000.0;
+        constexpr int numSamples = 96000;
+        constexpr float inputAmplitude = 0.1f;
+        constexpr float toneFrequency = 1000.0f;
+
+        juce::AudioBuffer<float> input(2, numSamples);
+        juce::AudioBuffer<float> lowInput(2, numSamples);
+
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < numSamples; ++i)
+            {
+                input.setSample(ch, i,
+                                inputAmplitude * std::sin(2.0f * juce::MathConstants<float>::pi
+                                                          * toneFrequency
+                                                          * static_cast<float>(i)
+                                                          / static_cast<float>(sampleRate)));
+
+                lowInput.setSample(ch, i,
+                                   inputAmplitude * std::sin(2.0f * juce::MathConstants<float>::pi
+                                                             * 80.0f
+                                                             * static_cast<float>(i)
+                                                             / static_cast<float>(sampleRate)));
+            }
+
+        // Filter resonance: a tone at the cutoff should get louder with Q.
+        {
+            CrushJointsAudioProcessor processor;
+            processor.prepareToPlay(sampleRate, 512);
+
+            setValue(processor, "tube_on", 0.0f);
+            setValue(processor, "lpf_on", 1.0f);
+            setValue(processor, "cutoff", toneFrequency);
+            setValue(processor, "comp_on", 0.0f);
+            setValue(processor, "master_on", 1.0f);
+            setValue(processor, "mix", 1.0f);
+            setValue(processor, "volume", 0.0f);
+
+            setValue(processor, "res", 0.0f);
+            const auto flat = renderProcessor(processor, input);
+
+            setValue(processor, "res", 1.0f);
+            const auto resonant = renderProcessor(processor, input);
+
+            // Look at the settled second half to avoid the filter's start-up.
+            juce::AudioBuffer<float> flatTail(2, numSamples / 2);
+            juce::AudioBuffer<float> resonantTail(2, numSamples / 2);
+            for (int ch = 0; ch < 2; ++ch)
+            {
+                flatTail.copyFrom(ch, 0, flat, ch, numSamples / 2, numSamples / 2);
+                resonantTail.copyFrom(ch, 0, resonant, ch, numSamples / 2, numSamples / 2);
+            }
+
+            const auto flatRms = rmsOfBuffer(flatTail);
+            const auto resonantRms = rmsOfBuffer(resonantTail);
+
+            std::cout << "Filter RMS: flat=" << flatRms << " resonant=" << resonantRms << "\n";
+            check(resonantRms > flatRms * 1.5f, "filter resonance clearly boosts the cutoff");
+        }
+
+        // Compressor amount and Phat must change the output.
+        {
+            CrushJointsAudioProcessor processor;
+            processor.prepareToPlay(sampleRate, 512);
+
+            setValue(processor, "tube_on", 0.0f);
+            setValue(processor, "lpf_on", 0.0f);
+            setValue(processor, "comp_on", 1.0f);
+            setValue(processor, "master_on", 1.0f);
+            setValue(processor, "mix", 1.0f);
+            setValue(processor, "volume", 0.0f);
+            setValue(processor, "phat", 0.0f);
+
+            setValue(processor, "amount", 0.0f);
+            const auto uncompressed = renderProcessor(processor, input);
+
+            setValue(processor, "amount", 1.0f);
+            const auto compressed = renderProcessor(processor, input);
+
+            const auto uncompressedRms = rmsOfBuffer(uncompressed);
+            const auto compressedRms = rmsOfBuffer(compressed);
+
+            std::cout << "Compressor RMS: off=" << uncompressedRms
+                      << " on=" << compressedRms << "\n";
+            check(std::abs(compressedRms - uncompressedRms) > 0.01f,
+                  "compressor amount changes the output");
+
+            const auto compressedLow = renderProcessor(processor, lowInput);
+            setValue(processor, "phat", 1.0f);
+            const auto phatLow = renderProcessor(processor, lowInput);
+            check(std::abs(rmsOfBuffer(phatLow) - rmsOfBuffer(compressedLow)) > 0.001f,
+                  "phat mode changes the low-frequency output");
+
+            // Phat is independent of Amount.
+            setValue(processor, "amount", 0.0f);
+            setValue(processor, "phat", 0.0f);
+            const auto amountZeroNoPhat = renderProcessor(processor, lowInput);
+            setValue(processor, "phat", 1.0f);
+            const auto amountZeroPhat = renderProcessor(processor, lowInput);
+            check(std::abs(rmsOfBuffer(amountZeroPhat) - rmsOfBuffer(amountZeroNoPhat)) > 0.0005f,
+                  "phat mode is audible at Amount 0");
+        }
+    }
+
     void testParameterLocksAndRandomize()
     {
         CrushJointsAudioProcessor processor;
@@ -268,6 +412,7 @@ int main()
 
     testABComparison();
     testProgramsAndState();
+    testProcessorDspWiring();
     testParameterLocksAndRandomize();
     testCustomPresetFromProcessor();
 

@@ -80,7 +80,7 @@ namespace CrushJoints
 
     void Compressor::processBlock(juce::AudioBuffer<float>& buffer)
     {
-        if (! compressorOn || amount < kMinAmount)
+        if (! compressorOn || (amount < kMinAmount && ! phatMode))
         {
             gainReductionDb = 0.0f;
             return;

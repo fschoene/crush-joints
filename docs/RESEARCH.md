@@ -169,6 +169,11 @@ soft-knee gain computer. CrushJoints follows the same topology; the attack is
   off for clean guitar.
 - Almost always left on for 808s and basses.
 
+> **Implementation note:** CrushJoints lets Phat affect the signal even when
+> Amount is 0, as long as the Compressor is enabled. CrushClone returns early
+> at Amount 0, which makes the Phat toggle appear inert. This is a deliberate
+> UX deviation.
+
 ## 6. Master
 
 | Control | Range | Default | Description |

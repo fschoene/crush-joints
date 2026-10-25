@@ -90,7 +90,7 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
     (10→1 ms and 150→50 ms with Amount), soft-knee gain computer (0→-30 dB
     threshold, 1:1→8:1 ratio), auto makeup up to +12 dB. Phat blends the dry
     signal with a compressed, 120 Hz low-shelved copy with a blend increasing
-    from 0.2 to 0.65.
+    from 0.2 to 0.65. Phat is audible at Amount 0 as long as Compressor is on.
   - **Master:** optional dry/wet blend against a pre-effects copy, output
     volume, full bypass when `master_on` is false, hard limiting at ±2.0 and
     NaN/Inf sanitation.
@@ -122,7 +122,9 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 5. Custom preset save/delete through the processor and factory/user program metadata.
 6. Locked parameters staying fixed during Randomize and module switches never
    being randomised.
-7. Optional editor snapshots at 80%, 100% and 150% (`CRUSHJOINTS_RENDER_UI=1`).
+7. Filter resonance boosting a tone at the cutoff and compressor amount/Phat
+   changing the rendered output.
+8. Optional editor snapshots at 80%, 100% and 150% (`CRUSHJOINTS_RENDER_UI=1`).
 
 Result:
 
@@ -147,7 +149,8 @@ Ordered roughly by impact.
    CamelCrusher-inspired rather than pixel-exact.
 4. **Randomize can still produce extreme settings.** It leaves module switches
    alone and respects locks, but it can set several parameters to their
-   extremes at once. There is no "intelligent" constraint yet.
+   extremes at once. There is no "intelligent" constraint yet. Phat is also a
+   deliberate deviation: it is audible at Amount 0, unlike CrushClone.
 5. **Master volume range differs from the reference.** The plugin uses
    -24..+12 dB (CrushClone's range, required by presets such as MAS Loudener at
    +2 dB) instead of the original -51..0 dB.

@@ -226,6 +226,8 @@ The editor is a native JUCE component with an 860×440 design resolution:
   combo, Save/Delete and Randomize.
 - Four equal module columns: Distortion, Filter, Compressor, Master.
 - Every knob has a visible uppercase label and a small padlock button.
+- Module ON switches (and PHAT) sit at the top of each module, directly under
+  the module title, so bypass state is immediately visible.
 - Knobs use `RotaryHorizontalVerticalDrag` with a text box below.
 - Double-clicking a knob resets it to the parameter's default (Tube/Mech/Amount
   = 0, Cutoff = 20 kHz, Res = 0, Volume = 0 dB, Mix = 100%).
@@ -306,7 +308,9 @@ verifies:
   lock flags,
 - user preset save/delete through the processor using a temporary bank file,
 - locked parameters staying unchanged during Randomize and module switches
-  never being randomised.
+  never being randomised,
+- filter resonance boosting a tone at the cutoff and compressor Amount/Phat
+  changing the rendered output.
 
 `CRUSHJOINTS_RENDER_UI=1` also renders 80%, 100% and 150% editor snapshots to
 `/tmp/crush-editor-*.png` for visual inspection.
