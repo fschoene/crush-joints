@@ -27,12 +27,6 @@ namespace CrushJoints
         void setMechAmount(float amount);
         void setTubeOn(bool on);
 
-        // A/B testing support
-        void copyAtoB();
-        void copyBtoA();
-        void toggleAB();
-        bool isAActive() const { return isA; }
-
     private:
         struct TubeCoeffs
         {
@@ -53,15 +47,5 @@ namespace CrushJoints
         float mechAmount = 0.0f;
         bool tubeOn = true;
 
-        // A/B parameter states
-        float tubeAmountA = 0.0f;
-        float mechAmountA = 0.0f;
-        bool tubeOnA = true;
-
-        float tubeAmountB = 0.0f;
-        float mechAmountB = 0.0f;
-        bool tubeOnB = true;
-
-        bool isA = true;
     };
 }

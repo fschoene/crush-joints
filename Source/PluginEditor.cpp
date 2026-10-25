@@ -20,21 +20,68 @@ namespace
 CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudioProcessor& p)
     : AudioProcessorEditor(&p), processorRef(p), apvts(p.getAPVTS())
 {
+    // ---- A/B controls --------------------------------------------------------
+    abLabel.setText("A/B", juce::dontSendNotification);
+    abLabel.setJustificationType(juce::Justification::centredRight);
+    addAndMakeVisible(abLabel);
+
+    for (auto* button : { &abButtonA, &abButtonB })
+    {
+        button->setClickingTogglesState(false);
+        button->setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff3b6ea5));
+        addAndMakeVisible(button);
+    }
+
+    abButtonA.setButtonText("A");
+    abButtonA.setTooltip("Switch to A/B slot A");
+    abButtonA.onClick = [this]
+    {
+        processorRef.setActiveABSlot(0);
+        updateFromProcessor();
+    };
+
+    abButtonB.setButtonText("B");
+    abButtonB.setTooltip("Switch to A/B slot B");
+    abButtonB.onClick = [this]
+    {
+        processorRef.setActiveABSlot(1);
+        updateFromProcessor();
+    };
+
+    copyABButton.setTooltip("Copy the active slot into the other slot");
+    copyABButton.onClick = [this]
+    {
+        processorRef.copyActiveABToInactive();
+        updateFromProcessor();
+    };
+    addAndMakeVisible(copyABButton);
+
     // ---- Preset bar ----------------------------------------------------------
     presetLabel.setText("Patch", juce::dontSendNotification);
     presetLabel.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(presetLabel);
 
-    for (int i = 0; i < processorRef.getNumPrograms(); ++i)
-        presetBox.addItem(processorRef.getProgramName(i), i + 1);
-    presetBox.setSelectedId(1, juce::dontSendNotification);
     presetBox.onChange = [this]
     {
+        if (updatingPresetBox)
+            return;
+
         const auto index = presetBox.getSelectedItemIndex();
+
         if (index >= 0)
             processorRef.setCurrentProgram(index);
     };
     addAndMakeVisible(presetBox);
+
+    savePresetButton.setButtonText("Save...");
+    savePresetButton.setTooltip("Save the current settings as a user preset");
+    savePresetButton.onClick = [this] { showSavePresetDialog(); };
+    addAndMakeVisible(savePresetButton);
+
+    deletePresetButton.setButtonText("Delete");
+    deletePresetButton.setTooltip("Delete the selected user preset");
+    deletePresetButton.onClick = [this] { showDeletePresetDialog(); };
+    addAndMakeVisible(deletePresetButton);
 
     randomizeButton.setButtonText("Randomize");
     randomizeButton.onClick = [this] { randomizeParameters(); };
@@ -105,11 +152,15 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
     mixAttachment      = std::make_unique<SliderAttachment>(apvts, "mix", mixSlider);
     masterOnAttachment = std::make_unique<ButtonAttachment>(apvts, "master_on", masterOnButton);
 
-    setSize(720, 400);
+    processorRef.addChangeListener(this);
+    updateFromProcessor();
+
+    setSize(860, 440);
 }
 
 CrushJointsAudioProcessorEditor::~CrushJointsAudioProcessorEditor()
 {
+    processorRef.removeChangeListener(this);
 }
 
 //==============================================================================
@@ -118,22 +169,31 @@ void CrushJointsAudioProcessorEditor::paint(juce::Graphics& g)
     g.fillAll(juce::Colour(0xff1e1e1e));
 
     g.setColour(juce::Colours::white);
-    g.setFont(20.0f);
-    g.drawText("CrushJoints", getLocalBounds().removeFromTop(36).reduced(16, 0),
-               juce::Justification::centredLeft, true);
+    g.setFont(18.0f);
+    auto titleArea = getLocalBounds().reduced(12).removeFromTop(32).removeFromLeft(120);
+    g.drawText("CrushJoints", titleArea, juce::Justification::centredLeft, true);
 }
 
 void CrushJointsAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds().reduced(12);
 
-    // Header row: title area on the left, preset controls on the right.
-    auto header = area.removeFromTop(36);
-    header.removeFromLeft(200);
+    // Header: title (painted), A/B controls, preset controls and randomize.
+    auto header = area.removeFromTop(32);
+    header.removeFromLeft(120);
 
-    presetLabel.setBounds(header.removeFromLeft(64));
-    presetBox.setBounds(header.removeFromLeft(200).reduced(2, 4));
-    randomizeButton.setBounds(header.removeFromLeft(100).reduced(2, 4));
+    abLabel.setBounds(header.removeFromLeft(30));
+    abButtonA.setBounds(header.removeFromLeft(28).reduced(1, 0));
+    abButtonB.setBounds(header.removeFromLeft(28).reduced(1, 0));
+    header.removeFromLeft(6);
+    copyABButton.setBounds(header.removeFromLeft(70).reduced(1, 0));
+    header.removeFromLeft(10);
+
+    presetLabel.setBounds(header.removeFromLeft(44));
+    presetBox.setBounds(header.removeFromLeft(180).reduced(1, 0));
+    savePresetButton.setBounds(header.removeFromLeft(64).reduced(1, 0));
+    deletePresetButton.setBounds(header.removeFromLeft(64).reduced(1, 0));
+    randomizeButton.setBounds(header.removeFromRight(90).reduced(1, 0));
 
     area.removeFromTop(8);
 
@@ -168,27 +228,113 @@ void CrushJointsAudioProcessorEditor::resized()
         }
     };
 
-    auto distortionArea = columns.removeFromLeft(columnWidth);
-    layoutModule(distortionArea, distortionGroup, tubeSlider, &mechSlider,
+    layoutModule(columns.removeFromLeft(columnWidth), distortionGroup, tubeSlider, &mechSlider,
                  tubeOnButton, nullptr);
-
-    auto filterArea = columns.removeFromLeft(columnWidth);
-    layoutModule(filterArea, filterGroup, cutoffSlider, &resSlider,
+    layoutModule(columns.removeFromLeft(columnWidth), filterGroup, cutoffSlider, &resSlider,
                  lpfOnButton, nullptr);
-
-    auto compressorArea = columns.removeFromLeft(columnWidth);
-    layoutModule(compressorArea, compressorGroup, amountSlider, nullptr,
+    layoutModule(columns.removeFromLeft(columnWidth), compressorGroup, amountSlider, nullptr,
                  compOnButton, &phatButton);
+    layoutModule(columns, masterGroup, volumeSlider, &mixSlider, masterOnButton, nullptr);
+}
 
-    layoutModule(columns, masterGroup, volumeSlider, &mixSlider,
-                 masterOnButton, nullptr);
+//==============================================================================
+void CrushJointsAudioProcessorEditor::changeListenerCallback(juce::ChangeBroadcaster*)
+{
+    updateFromProcessor();
+}
 
-    // The tube/mech "On" switch controls the whole distortion section.
+void CrushJointsAudioProcessorEditor::updateFromProcessor()
+{
+    updatingPresetBox = true;
+    presetBox.clear(juce::dontSendNotification);
+
+    const int numPresets = processorRef.getNumPrograms();
+
+    for (int i = 0; i < numPresets; ++i)
+    {
+        auto name = processorRef.getProgramName(i);
+
+        if (processorRef.isUserPreset(i))
+            name = "User: " + name;
+
+        presetBox.addItem(name, i + 1);
+    }
+
+    const int currentProgram = processorRef.getCurrentProgram();
+    presetBox.setSelectedId(juce::jlimit(1, juce::jmax(1, numPresets), currentProgram + 1),
+                            juce::dontSendNotification);
+    updatingPresetBox = false;
+
+    const int activeSlot = processorRef.getActiveABSlot();
+    abButtonA.setToggleState(activeSlot == 0, juce::dontSendNotification);
+    abButtonB.setToggleState(activeSlot == 1, juce::dontSendNotification);
+    copyABButton.setButtonText(activeSlot == 0 ? "A -> B" : "B -> A");
+
+    deletePresetButton.setEnabled(processorRef.isUserPreset(currentProgram));
+}
+
+void CrushJointsAudioProcessorEditor::showSavePresetDialog()
+{
+    const int currentProgram = processorRef.getCurrentProgram();
+    auto defaultName = processorRef.getProgramName(currentProgram);
+
+    if (! processorRef.isUserPreset(currentProgram))
+        defaultName += " Copy";
+
+    auto* window = new juce::AlertWindow("Save Preset",
+                                         "Save the current settings as a user preset:",
+                                         juce::MessageBoxIconType::NoIcon);
+    window->addTextEditor("name", defaultName, "Name:");
+    window->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    window->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+
+    window->enterModalState(true,
+                            juce::ModalCallbackFunction::create([this, window](int result)
+                            {
+                                if (result != 1)
+                                    return;
+
+                                const auto name = window->getTextEditorContents("name");
+
+                                if (processorRef.saveUserPreset(name) < 0)
+                                {
+                                    juce::AlertWindow::showMessageBoxAsync(
+                                        juce::MessageBoxIconType::WarningIcon,
+                                        "Save Preset",
+                                        "Could not save the preset. Check that the name is not "
+                                        "empty and that the preset folder is writable.");
+                                }
+                            }),
+                            true);
+}
+
+void CrushJointsAudioProcessorEditor::showDeletePresetDialog()
+{
+    const int currentProgram = processorRef.getCurrentProgram();
+
+    if (! processorRef.isUserPreset(currentProgram))
+        return;
+
+    const auto name = processorRef.getProgramName(currentProgram);
+
+    juce::AlertWindow::showOkCancelBox(
+        juce::MessageBoxIconType::QuestionIcon,
+        "Delete Preset",
+        "Delete user preset \"" + name + "\"?",
+        "Delete",
+        "Cancel",
+        this,
+        juce::ModalCallbackFunction::create([this, currentProgram](int result)
+        {
+            if (result != 0)
+                processorRef.deleteUserPreset(currentProgram);
+        }));
 }
 
 void CrushJointsAudioProcessorEditor::randomizeParameters()
 {
     juce::Random random;
+
     for (auto* parameter : processorRef.getParameters())
         parameter->setValueNotifyingHost(random.nextFloat());
 }

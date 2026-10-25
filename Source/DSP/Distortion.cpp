@@ -129,38 +129,4 @@ namespace CrushJoints
     {
         tubeOn = on;
     }
-
-    //==============================================================================
-    // A/B testing methods
-    void Distortion::copyAtoB()
-    {
-        tubeAmountB = tubeAmountA;
-        mechAmountB = mechAmountA;
-        tubeOnB = tubeOnA;
-    }
-
-    void Distortion::copyBtoA()
-    {
-        tubeAmountA = tubeAmountB;
-        mechAmountA = mechAmountB;
-        tubeOnA = tubeOnB;
-    }
-
-    void Distortion::toggleAB()
-    {
-        isA = ! isA;
-
-        if (isA)
-        {
-            tubeAmount = tubeAmountA;
-            mechAmount = mechAmountA;
-            tubeOn = tubeOnA;
-        }
-        else
-        {
-            tubeAmount = tubeAmountB;
-            mechAmount = mechAmountB;
-            tubeOn = tubeOnB;
-        }
-    }
 }

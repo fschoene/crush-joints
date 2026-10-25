@@ -2,7 +2,7 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-CrushJointsAudioProcessor::CrushJointsAudioProcessor()
+CrushJointsAudioProcessor::CrushJointsAudioProcessor(juce::File userPresetFile)
     : AudioProcessor(BusesProperties()
                          .withInput("Input", juce::AudioChannelSet::stereo(), true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
@@ -27,7 +27,8 @@ CrushJointsAudioProcessor::CrushJointsAudioProcessor()
                 std::make_unique<juce::AudioParameterFloat>("volume", "Volume", -24.0f, 12.0f, 0.0f),
                 std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.0f, 1.0f, 1.0f),
                 std::make_unique<juce::AudioParameterBool>("master_on", "Master On", true)
-           })
+           }),
+      presets(userPresetFile)
 {
     // Get parameter references
     tubeParam = (juce::AudioParameterFloat*)apvts.getParameter("tube");
@@ -46,8 +47,16 @@ CrushJointsAudioProcessor::CrushJointsAudioProcessor()
     mixParam = (juce::AudioParameterFloat*)apvts.getParameter("mix");
     masterOnParam = (juce::AudioParameterBool*)apvts.getParameter("master_on");
     
-    // Initialize presets
+    parameterRefs = {
+        tubeParam, mechParam, tubeOnParam,
+        cutoffParam, resParam, lpfOnParam,
+        amountParam, phatParam, compOnParam,
+        volumeParam, mixParam, masterOnParam
+    };
+
+    // Initialize presets and the A/B snapshots from the defaults.
     presets.initPresets();
+    initialiseABState();
 }
 
 CrushJointsAudioProcessor::~CrushJointsAudioProcessor()
@@ -179,63 +188,299 @@ int CrushJointsAudioProcessor::getNumPrograms()
     return presets.getNumPresets();
 }
 
+int CrushJointsAudioProcessor::getNumFactoryPresets() const
+{
+    return presets.getNumFactoryPresets();
+}
+
+bool CrushJointsAudioProcessor::isUserPreset(int programIndex) const
+{
+    return presets.isUserPreset(programIndex);
+}
+
 int CrushJointsAudioProcessor::getCurrentProgram()
 {
-    return 0;
+    return currentProgram;
 }
 
 void CrushJointsAudioProcessor::setCurrentProgram(int index)
 {
-    if (index >= 0 && index < getNumPrograms())
-    {
-        // Load preset values. The AudioParameter* assignment operators take
-        // denormalised values and handle the normalisation internally.
-        const auto preset = presets.getPreset(index);
+    if (index < 0 || index >= getNumPrograms())
+        return;
 
-        *tubeParam     = preset.tube;
-        *mechParam     = preset.mech;
-        *tubeOnParam   = preset.tubeOn;
-        *cutoffParam   = preset.cutoff;
-        *resParam      = preset.res;
-        *lpfOnParam    = preset.lpfOn;
-        *amountParam   = preset.amount;
-        *phatParam     = preset.phat;
-        *compOnParam   = preset.compOn;
-        *volumeParam   = preset.volume;
-        *mixParam      = preset.mix;
-        *masterOnParam = preset.masterOn;
-    }
+    applyPreset(presets.getPreset(index));
+    currentProgram = index;
+    storeCurrentParametersInSlot(getActiveABSlot());
+
+    updateHostDisplay();
+    sendChangeMessage();
 }
 
 const juce::String CrushJointsAudioProcessor::getProgramName(int index)
 {
     if (index >= 0 && index < getNumPrograms())
-    {
         return presets.getPreset(index).name;
-    }
+
     return "Default";
 }
 
 void CrushJointsAudioProcessor::changeProgramName(int index, const juce::String& newName)
 {
-    juce::ignoreUnused(index, newName);
+    if (! presets.renameUserPreset(index, newName))
+        return;
+
+    updateHostDisplay();
+    sendChangeMessage();
+}
+
+//==============================================================================
+int CrushJointsAudioProcessor::saveUserPreset(const juce::String& name)
+{
+    const auto preset = captureAsPreset(name);
+
+    if (preset.name.isEmpty())
+        return -1;
+
+    const int index = presets.saveUserPreset(preset);
+
+    if (index < 0)
+        return -1;
+
+    currentProgram = index;
+    storeCurrentParametersInSlot(getActiveABSlot());
+
+    updateHostDisplay();
+    sendChangeMessage();
+    return index;
+}
+
+bool CrushJointsAudioProcessor::deleteUserPreset(int programIndex)
+{
+    if (! presets.isUserPreset(programIndex))
+        return false;
+
+    const bool wasCurrent = programIndex == currentProgram;
+    const bool wasBeforeCurrent = programIndex < currentProgram;
+
+    if (! presets.deleteUserPreset(programIndex))
+        return false;
+
+    if (wasCurrent)
+    {
+        currentProgram = juce::jlimit(0, juce::jmax(0, getNumPrograms() - 1),
+                                     programIndex > 0 ? programIndex - 1 : 0);
+        applyPreset(presets.getPreset(currentProgram));
+        storeCurrentParametersInSlot(getActiveABSlot());
+    }
+    else if (wasBeforeCurrent)
+    {
+        --currentProgram;
+    }
+
+    updateHostDisplay();
+    sendChangeMessage();
+    return true;
+}
+
+//==============================================================================
+// A/B comparison
+int CrushJointsAudioProcessor::getActiveABSlot() const
+{
+    const juce::ScopedLock lock(abLock);
+    return activeABSlot;
+}
+
+void CrushJointsAudioProcessor::setActiveABSlot(int slot)
+{
+    slot = juce::jlimit(0, 1, slot);
+
+    ParameterSnapshot snapshotToApply {};
+
+    {
+        const juce::ScopedLock lock(abLock);
+
+        if (slot == activeABSlot)
+            return;
+
+        // Preserve any edits made to the slot we are leaving.
+        abSlots[activeABSlot] = captureParameterSnapshot();
+        activeABSlot = slot;
+        snapshotToApply = abSlots[slot];
+    }
+
+    applyParameterSnapshot(snapshotToApply);
+    sendChangeMessage();
+}
+
+void CrushJointsAudioProcessor::copyActiveABToInactive()
+{
+    {
+        const juce::ScopedLock lock(abLock);
+        abSlots[activeABSlot] = captureParameterSnapshot();
+        abSlots[1 - activeABSlot] = abSlots[activeABSlot];
+    }
+
+    sendChangeMessage();
+}
+
+//==============================================================================
+// Parameter snapshots and preset helpers
+CrushJointsAudioProcessor::ParameterSnapshot CrushJointsAudioProcessor::captureParameterSnapshot() const
+{
+    ParameterSnapshot snapshot {};
+
+    for (int i = 0; i < kNumParameters; ++i)
+        snapshot[static_cast<size_t>(i)] = parameterRefs[static_cast<size_t>(i)]->getValue();
+
+    return snapshot;
+}
+
+void CrushJointsAudioProcessor::applyParameterSnapshot(const ParameterSnapshot& snapshot)
+{
+    for (int i = 0; i < kNumParameters; ++i)
+        parameterRefs[static_cast<size_t>(i)]->setValueNotifyingHost(
+            juce::jlimit(0.0f, 1.0f, snapshot[static_cast<size_t>(i)]));
+}
+
+void CrushJointsAudioProcessor::storeCurrentParametersInSlot(int slot)
+{
+    const juce::ScopedLock lock(abLock);
+    abSlots[juce::jlimit(0, 1, slot)] = captureParameterSnapshot();
+}
+
+void CrushJointsAudioProcessor::initialiseABState()
+{
+    const juce::ScopedLock lock(abLock);
+    abSlots[0] = captureParameterSnapshot();
+    abSlots[1] = abSlots[0];
+    activeABSlot = 0;
+}
+
+void CrushJointsAudioProcessor::applyPreset(const CrushJoints::Preset& preset)
+{
+    *tubeParam     = preset.tube;
+    *mechParam     = preset.mech;
+    *tubeOnParam   = preset.tubeOn;
+    *cutoffParam   = preset.cutoff;
+    *resParam      = preset.res;
+    *lpfOnParam    = preset.lpfOn;
+    *amountParam   = preset.amount;
+    *phatParam     = preset.phat;
+    *compOnParam   = preset.compOn;
+    *volumeParam   = preset.volume;
+    *mixParam      = preset.mix;
+    *masterOnParam = preset.masterOn;
+}
+
+CrushJoints::Preset CrushJointsAudioProcessor::captureAsPreset(const juce::String& name) const
+{
+    CrushJoints::Preset preset;
+    preset.name = name.trim().substring(0, 64);
+    preset.tube = tubeParam->get();
+    preset.mech = mechParam->get();
+    preset.tubeOn = tubeOnParam->get();
+    preset.cutoff = cutoffParam->get();
+    preset.res = resParam->get();
+    preset.lpfOn = lpfOnParam->get();
+    preset.amount = amountParam->get();
+    preset.phat = phatParam->get();
+    preset.compOn = compOnParam->get();
+    preset.volume = volumeParam->get();
+    preset.mix = mixParam->get();
+    preset.masterOn = masterOnParam->get();
+    preset.isUser = true;
+    return preset;
 }
 
 //==============================================================================
 void CrushJointsAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
-    // Save parameter values
     auto state = apvts.copyState();
+    state.setProperty("currentProgram", currentProgram, nullptr);
+
+    juce::ValueTree abState("AB");
+    {
+        const juce::ScopedLock lock(abLock);
+
+        // Capture any edits made to the active slot before serialising.
+        abSlots[activeABSlot] = captureParameterSnapshot();
+        abState.setProperty("active", activeABSlot, nullptr);
+
+        for (int i = 0; i < kNumParameters; ++i)
+        {
+            const auto index = juce::String(i);
+            abState.setProperty("a" + index, static_cast<double>(abSlots[0][static_cast<size_t>(i)]), nullptr);
+            abState.setProperty("b" + index, static_cast<double>(abSlots[1][static_cast<size_t>(i)]), nullptr);
+        }
+    }
+
+    // The restored APVTS state may already contain an AB child; never let
+    // repeated save/load cycles accumulate duplicates.
+    if (auto existing = state.getChildWithName("AB"); existing.isValid())
+        state.removeChild(existing, nullptr);
+
+    state.appendChild(abState, nullptr);
+
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
     copyXmlToBinary(*xml, destData);
 }
 
 void CrushJointsAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
-    // Restore parameter values
     std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
-    if (xmlState.get() != nullptr)
-        apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
+
+    if (xmlState == nullptr)
+        return;
+
+    auto state = juce::ValueTree::fromXml(*xmlState);
+
+    if (! state.isValid())
+        return;
+
+    currentProgram = static_cast<int>(state.getProperty("currentProgram", 0));
+
+    auto abState = state.getChildWithName("AB");
+
+    // Keep APVTS.state limited to parameter data; program and A/B state are
+    // re-attached on every save.
+    state.removeProperty("currentProgram", nullptr);
+
+    if (abState.isValid())
+        state.removeChild(abState, nullptr);
+
+    apvts.replaceState(state);
+
+    {
+        const juce::ScopedLock lock(abLock);
+
+        if (abState.isValid())
+        {
+            activeABSlot = juce::jlimit(0, 1, static_cast<int>(abState.getProperty("active", 0)));
+
+            for (int i = 0; i < kNumParameters; ++i)
+            {
+                const auto index = juce::String(i);
+                const auto defaultValue = static_cast<double>(parameterRefs[static_cast<size_t>(i)]->getValue());
+                abSlots[0][static_cast<size_t>(i)] = static_cast<float>(
+                    static_cast<double>(abState.getProperty("a" + index, defaultValue)));
+                abSlots[1][static_cast<size_t>(i)] = static_cast<float>(
+                    static_cast<double>(abState.getProperty("b" + index, defaultValue)));
+            }
+        }
+        else
+        {
+            // Legacy state without A/B data: both slots start from the
+            // restored parameter values.
+            activeABSlot = 0;
+            abSlots[0] = captureParameterSnapshot();
+            abSlots[1] = abSlots[0];
+        }
+    }
+
+    currentProgram = juce::jlimit(0, juce::jmax(0, getNumPrograms() - 1), currentProgram);
+
+    updateHostDisplay();
+    sendChangeMessage();
 }
 
 //==============================================================================

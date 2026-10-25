@@ -145,38 +145,4 @@ namespace CrushJoints
     {
         compressorOn = on;
     }
-
-    //==============================================================================
-    // A/B testing methods
-    void Compressor::copyAtoB()
-    {
-        amountB = amountA;
-        phatModeB = phatModeA;
-        compressorOnB = compressorOnA;
-    }
-
-    void Compressor::copyBtoA()
-    {
-        amountA = amountB;
-        phatModeA = phatModeB;
-        compressorOnA = compressorOnB;
-    }
-
-    void Compressor::toggleAB()
-    {
-        isA = ! isA;
-
-        if (isA)
-        {
-            amount = amountA;
-            phatMode = phatModeA;
-            compressorOn = compressorOnA;
-        }
-        else
-        {
-            amount = amountB;
-            phatMode = phatModeB;
-            compressorOn = compressorOnB;
-        }
-    }
 }

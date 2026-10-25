@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <array>
 #include "DSP/Distortion.h"
 #include "DSP/LadderFilter.h"
 #include "DSP/Compressor.h"
@@ -8,11 +9,12 @@
 #include "Common/Presets.h"
 
 //==============================================================================
-class CrushJointsAudioProcessor : public juce::AudioProcessor
+class CrushJointsAudioProcessor : public juce::AudioProcessor,
+                                   public juce::ChangeBroadcaster
 {
 public:
     //==============================================================================
-    CrushJointsAudioProcessor();
+    explicit CrushJointsAudioProcessor(juce::File userPresetFile = CrushJoints::Presets::getDefaultUserPresetFile());
     ~CrushJointsAudioProcessor() override;
 
     //==============================================================================
@@ -47,6 +49,25 @@ public:
     void setStateInformation(const void* data, int sizeInBytes) override;
 
     //==============================================================================
+    // Presets
+    /** Saves the current parameter values as a user preset. Returns the new
+        program index, or -1 if the name is invalid or the file cannot be
+        written. Overwrites a user preset with the same name. */
+    int saveUserPreset(const juce::String& name);
+
+    /** Deletes a user preset. Factory presets cannot be deleted. */
+    bool deleteUserPreset(int programIndex);
+
+    bool isUserPreset(int programIndex) const;
+    int getNumFactoryPresets() const;
+
+    //==============================================================================
+    // A/B comparison
+    int getActiveABSlot() const;
+    void setActiveABSlot(int slot);
+    void copyActiveABToInactive();
+
+    //==============================================================================
     // Parameters
     juce::AudioParameterFloat* tubeParam;
     juce::AudioParameterFloat* mechParam;
@@ -69,7 +90,26 @@ public:
 
 private:
     //==============================================================================
+    static constexpr int kNumParameters = 12;
+    using ParameterSnapshot = std::array<float, kNumParameters>;
+
+    ParameterSnapshot captureParameterSnapshot() const;
+    void applyParameterSnapshot(const ParameterSnapshot& snapshot);
+    void storeCurrentParametersInSlot(int slot);
+    void initialiseABState();
+
+    void applyPreset(const CrushJoints::Preset& preset);
+    CrushJoints::Preset captureAsPreset(const juce::String& name) const;
+
     juce::AudioProcessorValueTreeState apvts;
+
+    std::array<juce::RangedAudioParameter*, kNumParameters> parameterRefs {};
+
+    // A/B parameter snapshots (normalised 0..1 values) and active slot.
+    ParameterSnapshot abSlots[2] {};
+    int activeABSlot = 0;
+    int currentProgram = 0;
+    mutable juce::CriticalSection abLock;
 
     // DSP processors
     CrushJoints::Distortion distortion;

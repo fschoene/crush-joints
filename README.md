@@ -10,12 +10,14 @@ plugin, featuring:
 - 24dB/octave low-pass filter with resonance
 - One-knob compressor with Phat mode
 - Master volume and mix controls
-- Full preset system with 12 built-in presets
+- 12 factory presets plus saveable user presets
+- A/B parameter comparison with copy-between-slots
 
 > **Current status:** the full signal chain (Distortion → Filter → Compressor →
-> Master) is implemented and covered by offline tests. The plugin builds as
-> VST3/AU/Standalone. Host validation (`pluginval`/`auval`/DAW testing) and
-> several GUI features are still pending. See [docs/STATUS.md](docs/STATUS.md).
+> Master), A/B comparison and user preset bank are implemented and covered by
+> offline tests. The plugin builds as VST3/AU/Standalone. Host validation
+> (`pluginval`/`auval`/DAW testing) and several GUI features are still pending.
+> See [docs/STATUS.md](docs/STATUS.md).
 
 ## Building
 
@@ -45,11 +47,15 @@ Copy the VST3/AU bundles to `~/Library/Audio/Plug-Ins/VST3/` and
 `~/Library/Audio/Plug-Ins/Components/` respectively, or run the standalone app
 directly.
 
-Run the offline DSP tests with:
+Run the offline tests with:
 
 ```sh
 ./build/CrushJointsTests_artefacts/Release/CrushJointsTests
+./build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 ```
+
+User presets are saved to
+`~/Library/Application Support/CrushJoints/Presets.xml` on macOS.
 
 ## Development
 

@@ -45,11 +45,19 @@ crush-joints/
     │   └── Master.h/.cpp           # volume, mix, limiter
     └── Common/
         ├── CamelCrusherCoeffs.h/.cpp  # reverse-camel coefficient tables
-        └── Presets.h/.cpp             # 12 built-in presets
+        └── Presets.h/.cpp             # factory + user preset bank
+```
+
+Tests live in `Tests/`:
+
+```
+Tests/
+├── DSPTests.cpp                     # offline DSP/reference tests
+└── ProcessorTests.cpp               # A/B, programs and state tests
 ```
 
 There is currently no CI workflow and no plugin-host project in the
-repository. The offline DSP tests live in `Tests/DSPTests.cpp`.
+repository.
 
 ## 3. Build system
 
@@ -88,6 +96,7 @@ build/CrushJoints_artefacts/Release/
 └── Standalone/CrushJoints.app
 
 build/CrushJointsTests_artefacts/Release/CrushJointsTests
+build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 ```
 
 ## 4. Signal chain
@@ -153,25 +162,63 @@ Notes:
   [STATUS.md](STATUS.md).
 - The cutoff parameter is not skewed in the APVTS; the editor applies a
   `setSkewFactorFromMidPoint(1000.0)` to the knob so the low end is usable.
-- A/B state storage exists inside the DSP classes (`copyAtoB`, `copyBtoA`,
-  `toggleAB`) but is not connected to the APVTS, the editor or the processor.
+- A/B comparison is implemented at the processor level as two snapshots of
+  all 12 normalised parameter values. Switching slots captures the current
+  parameters, then applies the other snapshot through
+  `setValueNotifyingHost`, so host automation sees the change. The DSP classes
+  do not keep their own A/B state.
 
-## 6. Presets and program handling
+## 6. Presets, programs and state
 
-- `Common/Presets.cpp` defines 12 patches. `Presets::getPreset(index)` returns
-  a copy; `getNumPresets()` is 12.
-- `setCurrentProgram(index)` writes each value through the
-  `AudioParameterFloat/Bool` assignment operators, which handles
-  normalisation.
-- `getCurrentProgram()` always returns `0`; `changeProgramName()` is a no-op.
-  The editor's preset combo is initialised once and does not follow
+### Factory and user presets
+
+- `Common/Presets.cpp` defines 12 factory patches.
+- User presets are stored as XML in
+  `~/Library/Application Support/CrushJoints/Presets.xml` on macOS
+  (`userApplicationDataDirectory` is used so the same code works on other
+  platforms).
+- Program indices are: factory presets first, then user presets in insertion
+  order. `getNumPrograms()` returns the combined count.
+- `saveUserPreset(name)` captures the current 12 parameter values and appends
+  or overwrites a user preset with the same name (case-insensitive). It
+  returns the combined program index or -1. The editor exposes save and
+  delete; renaming is available through the host program API.
+- `deleteUserPreset(index)` only accepts user presets. Deleting the active
+  program falls back to the previous program and loads it.
+- `renameUserPreset` is used by the host-facing `changeProgramName`; factory
+  presets cannot be renamed or deleted.
+- The editor shows user presets with a `User: ` prefix so they cannot be
+  confused with factory names. Saving and deleting live in the preset bar.
+
+### Program API
+
+- `getCurrentProgram()` returns the real current index.
+- `setCurrentProgram(index)` applies the preset, updates the active A/B slot,
+  calls `updateHostDisplay()` and broadcasts a change so the editor follows
   host-driven program changes.
+- `getProgramName(index)` returns the preset name (raw, without the editor's
+  `User: ` prefix).
+- `changeProgramName(index, newName)` renames user presets; factory presets are
+  ignored.
+
+### State
+
+`getStateInformation`/`setStateInformation` serialise the APVTS parameter
+tree plus:
+
+- `currentProgram`,
+- an `AB` child tree containing both 12-value snapshots and the active slot.
+
+On restore, the stored parameter values are authoritative; the program index
+is used for display and clamped if the user preset bank changed. Legacy state
+without an `AB` child initialises both slots from the restored parameters.
 
 ## 7. Editor
 
-The editor is a native JUCE component, currently 720×400:
+The editor is a native JUCE component, currently 860×440:
 
-- Header: "CrushJoints" title, patch label, preset combo, randomize button.
+- Header: "CrushJoints" title, A/B buttons, copy button, patch label, preset
+  combo, Save/Delete and Randomize.
 - Four equal module columns: Distortion, Filter, Compressor, Master.
 - Knobs use `RotaryHorizontalVerticalDrag` with a text box below.
 - On/off and Phat controls are `ToggleButton`s.
@@ -179,6 +226,12 @@ The editor is a native JUCE component, currently 720×400:
   `ButtonAttachment`, so parameter changes are reflected immediately and are
   undo/host-automation safe.
 - `Randomize` sets every parameter to a uniform random normalised value.
+- The A/B buttons switch snapshots; the copy button copies the active slot
+  into the other one.
+- `Save...` opens a name dialog and writes a user preset. `Delete` is enabled
+  only for user presets and asks for confirmation.
+- The editor listens to processor change broadcasts, so host-driven program
+  changes and newly saved/deleted presets refresh the combo automatically.
 
 Implemented versus reference GUI:
 
@@ -186,13 +239,14 @@ Implemented versus reference GUI:
 |---------|--------|
 | Four module groups | implemented |
 | Knobs and on/off toggles | implemented |
-| Preset dropdown | implemented (one-way, no host sync) |
+| Preset dropdown | implemented, including host sync |
+| Save/Delete user presets | implemented |
+| A/B comparison + copy | implemented |
 | Randomize | implemented, but not "intelligent" and can turn modules off |
 | Value readout | missing |
 | Output level meter | missing |
 | MIDI Learn / right-click knob menu | missing |
 | Custom CamelCrusher styling | missing (default JUCE look) |
-| A/B testing UI | missing |
 | Resizable/scalable layout | missing (fixed size) |
 ## 8. DSP module structure
 
@@ -202,7 +256,6 @@ Each DSP class follows the same pattern:
   objects and resets state.
 - `processBlock(AudioBuffer<float>&)` is the audio hook.
 - Setters clamp/store parameters.
-- A/B helpers copy/toggle the stored parameter values.
 
 `Distortion` looks up the reference coefficient tables with linear
 interpolation between neighbouring entries, so automated changes are smooth
@@ -223,15 +276,25 @@ verifies:
 - low-pass attenuation and filter bypass,
 - compressor gain reduction, finite output and bypass,
 - master volume, limiter, bypass and dry/wet mix,
-- the preset bank, including the Telephone flags.
+- the preset bank, including the Telephone flags,
+- custom preset save/overwrite/rename/delete and XML round-trip through a
+  temporary file.
 
-Run it after building:
+`Tests/ProcessorTests.cpp` (`CrushJointsProcessorTests`) verifies:
+
+- A/B switching, edit capture, slot copying and restoration,
+- program changes and the real `getCurrentProgram()` value,
+- plugin state round-trip including `currentProgram` and both A/B slots,
+- user preset save/delete through the processor using a temporary bank file.
+
+Run both after building:
 
 ```sh
 ./build/CrushJointsTests_artefacts/Release/CrushJointsTests
+./build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 ```
 
-The test target can be disabled with `-DCRUSHJOINTS_BUILD_TESTS=OFF`.
+The test targets can be disabled with `-DCRUSHJOINTS_BUILD_TESTS=OFF`.
 
 ## 9. Plugin entry point
 

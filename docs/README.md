@@ -18,10 +18,14 @@ short and links here.
 - **Build:** working. Clean build produces VST3, AU and Standalone on macOS
   with CMake + a local JUCE 9 checkout.
 - **DSP:** all four modules implemented (Tube/Mech tables, SVF low-pass,
-  one-knob compressor + Phat, master limiter). Offline tests pass, including a
-  comparison against the reverse-camel reference path.
-- **GUI:** interactive, but value readout, level meter, MIDI Learn, right-click
-  knob modes and A/B controls are still missing.
+  one-knob compressor + Phat, master limiter). Offline DSP and processor tests
+  pass, including a comparison against the reverse-camel reference path.
+- **Presets/state:** 12 factory presets, disk-backed user presets (save,
+  overwrite, delete in the editor), real program API, A/B snapshots and full state
+  persistence.
+- **GUI:** interactive with A/B, Save/Delete, preset sync and Randomize; value
+  readout, level meter, MIDI Learn and right-click knob modes are still
+  missing.
 - **Validation:** `pluginval`, `auval` and DAW testing have not been run yet.
 
 See [STATUS.md](STATUS.md) for the detailed breakdown.

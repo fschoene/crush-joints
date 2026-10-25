@@ -29,12 +29,6 @@ namespace CrushJoints
 
         float getGainReductionDb() const noexcept { return gainReductionDb; }
 
-        // A/B testing support
-        void copyAtoB();
-        void copyBtoA();
-        void toggleAB();
-        bool isAActive() const { return isA; }
-
     private:
         float computeEnvelope(float inputLevel);
         float computeGainDb(float envelopeDb) const;
@@ -46,16 +40,6 @@ namespace CrushJoints
         bool phatMode = false;
         bool compressorOn = true;
 
-        // A/B parameter states
-        float amountA = 0.0f;
-        bool phatModeA = false;
-        bool compressorOnA = true;
-
-        float amountB = 0.0f;
-        bool phatModeB = false;
-        bool compressorOnB = true;
-
-        bool isA = true;
 
         float envelopeState = 0.0f;
         float gainReductionDb = 0.0f;

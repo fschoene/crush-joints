@@ -124,4 +124,51 @@ if(CRUSHJOINTS_BUILD_TESTS)
             juce::juce_recommended_config_flags
             juce::juce_recommended_warning_flags
     )
+
+    #--------------------------------------------------------------------------
+    # Processor-level tests: A/B state, program changes and plugin state.
+    juce_add_console_app(CrushJointsProcessorTests PRODUCT_NAME "CrushJointsProcessorTests")
+
+    target_compile_definitions(CrushJointsProcessorTests
+        PRIVATE
+            JucePlugin_Name="CrushJoints"
+            JUCE_WEB_BROWSER=0
+            JUCE_USE_CURL=0
+            JUCE_STRICT_MODE=1
+    )
+
+    target_sources(CrushJointsProcessorTests
+        PRIVATE
+            Tests/ProcessorTests.cpp
+            Source/PluginProcessor.cpp
+            Source/PluginEditor.cpp
+            Source/DSP/Distortion.cpp
+            Source/DSP/LadderFilter.cpp
+            Source/DSP/Compressor.cpp
+            Source/DSP/Master.cpp
+            Source/DSP/Oversampler.cpp
+            Source/Common/CamelCrusherCoeffs.cpp
+            Source/Common/Presets.cpp
+    )
+
+    target_include_directories(CrushJointsProcessorTests
+        PRIVATE
+            Source
+            Source/DSP
+            Source/Common
+    )
+
+    target_link_libraries(CrushJointsProcessorTests
+        PRIVATE
+            juce::juce_audio_processors
+            juce::juce_audio_utils
+            juce::juce_dsp
+            juce::juce_gui_basics
+            juce::juce_gui_extra
+            juce::juce_audio_basics
+            juce::juce_core
+        PUBLIC
+            juce::juce_recommended_config_flags
+            juce::juce_recommended_warning_flags
+    )
 endif()

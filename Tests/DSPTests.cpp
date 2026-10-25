@@ -434,18 +434,70 @@ namespace
 
     void testPresets()
     {
-        CrushJoints::Presets presets;
-        presets.initPresets();
+        const auto tempFile = juce::File::getSpecialLocation(juce::File::tempDirectory)
+                                  .getNonexistentChildFile("CrushJointsPresetsTest", ".xml");
 
-        check(presets.getNumPresets() == 12, "12 presets are available");
-        check(presets.getPreset(0).name == "Default", "first preset is Default");
-        checkClose(presets.getPreset(11).tube, 1.0f, 0.0f, "Destroy Everything tube");
-        checkClose(presets.getPreset(11).mech, 1.0f, 0.0f, "Destroy Everything mech");
+        {
+            CrushJoints::Presets presets(tempFile);
+            presets.initPresets();
 
-        const auto telephone = presets.getPreset(10);
-        check(telephone.name == "Telephone", "Telephone preset name");
-        check(telephone.lpfOn, "Telephone filter is on");
-        check(! telephone.compOn, "Telephone compressor is off");
+            check(presets.getNumPresets() == 12, "12 factory presets are available");
+            check(presets.getNumFactoryPresets() == 12, "12 factory presets reported");
+            check(presets.getNumUserPresets() == 0, "no user presets initially");
+            check(presets.getPreset(0).name == "Default", "first preset is Default");
+            checkClose(presets.getPreset(11).tube, 1.0f, 0.0f, "Destroy Everything tube");
+            checkClose(presets.getPreset(11).mech, 1.0f, 0.0f, "Destroy Everything mech");
+            check(! presets.isUserPreset(0), "factory preset is not a user preset");
+
+            const auto telephone = presets.getPreset(10);
+            check(telephone.name == "Telephone", "Telephone preset name");
+            check(telephone.lpfOn, "Telephone filter is on");
+            check(! telephone.compOn, "Telephone compressor is off");
+
+            auto custom = presets.getPreset(0);
+            custom.name = "My Custom";
+            custom.tube = 0.42f;
+            custom.mech = 0.17f;
+            custom.cutoff = 4321.0f;
+            custom.isUser = true;
+
+            const int customIndex = presets.saveUserPreset(custom);
+            check(customIndex == 12, "custom preset is appended after factory presets");
+            check(presets.getNumPresets() == 13, "user preset increases program count");
+            check(presets.getNumUserPresets() == 1, "one user preset");
+            check(presets.isUserPreset(12), "new preset is a user preset");
+            check(presets.getPreset(12).name == "My Custom", "custom preset name");
+            checkClose(presets.getPreset(12).tube, 0.42f, 1.0e-6f, "custom preset tube");
+            checkClose(presets.getPreset(12).cutoff, 4321.0f, 1.0e-3f, "custom preset cutoff");
+
+            custom.mech = 0.9f;
+            check(presets.saveUserPreset(custom) == 12, "saving the same name overwrites");
+            checkClose(presets.getPreset(12).mech, 0.9f, 1.0e-6f, "overwritten mech value");
+
+            check(presets.renameUserPreset(12, "Renamed"), "user preset can be renamed");
+            check(presets.getPreset(12).name == "Renamed", "renamed preset name");
+
+            auto invalid = custom;
+            invalid.name = "   ";
+            check(presets.saveUserPreset(invalid) == -1, "empty preset name is rejected");
+            check(! presets.deleteUserPreset(0), "factory presets cannot be deleted");
+            check(! presets.renameUserPreset(0, "Nope"), "factory presets cannot be renamed");
+        }
+
+        // Re-open the same bank to verify XML persistence.
+        {
+            CrushJoints::Presets reloaded(tempFile);
+            reloaded.initPresets();
+
+            check(reloaded.getNumPresets() == 13, "user preset survives reload");
+            check(reloaded.isUserPreset(12), "reloaded preset is a user preset");
+            check(reloaded.getPreset(12).name == "Renamed", "reloaded preset name");
+            checkClose(reloaded.getPreset(12).mech, 0.9f, 1.0e-6f, "reloaded mech value");
+            check(reloaded.deleteUserPreset(12), "user preset can be deleted");
+            check(reloaded.getNumPresets() == 12, "deleting restores factory count");
+        }
+
+        tempFile.deleteFile();
     }
 }
 

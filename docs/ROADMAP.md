@@ -39,19 +39,28 @@ Decision: **no oversampling in v1.** It matches reverse-camel, avoids latency
 in the dry/wet path, and preserves the original's aliasing character. The
 `Oversampler` wrapper remains available for a future optional quality mode.
 
-Residual work from this milestone is tracked under Milestone 2 (state/API) and
-Milestone 4 (host validation, CPU testing, optional oversampling).
+Residual work from this milestone is tracked under Milestone 4 (host
+validation, CPU testing, optional oversampling).
 
-## Milestone 2 — State, presets and automation (priority 1)
+## Milestone 2 — State, presets and automation (completed 2026-10-25)
 
-- Return the real current program from `getCurrentProgram()`.
-- Store/restore the program index as part of the APVTS state.
-- Make `changeProgramName()` either work or clearly document it as unsupported.
-- Synchronise the editor's preset box with host-driven program changes
-  (`AudioProcessorListener`/timer or parameter listeners).
-- Verify preset switching under automation and state restore.
-- Decide whether A/B testing belongs in the release; if yes, connect the
-  existing DSP A/B helpers to real parameter state and add UI.
+- [x] Return the real current program from `getCurrentProgram()`.
+- [x] Store/restore the program index as part of the plugin state.
+- [x] Implement `changeProgramName()` for user presets.
+- [x] Synchronise the editor's preset box with host-driven program changes via
+      a change broadcaster.
+- [x] Persist A/B slots and the active slot in the plugin state.
+- [x] Implement processor-level A/B comparison with edit capture, slot
+      switching and copy-active-to-inactive.
+- [x] Add user preset save/overwrite/delete backed by an XML bank in the user
+      application data directory (rename is available through the host API).
+- [x] Add editor controls for A/B, copy, save and delete.
+- [x] Add processor tests for A/B, programs and state.
+- [x] Add preset persistence tests using a temporary bank file.
+
+Still to verify under a real host: automation of all 12 parameters, preset
+recall and A/B switching while recording automation. This is tracked in
+Milestone 4.
 
 ## Milestone 3 — GUI completion (priority 2)
 
@@ -64,19 +73,18 @@ Reference features still missing:
 - Blue illuminated module switches and a CamelCrusher-like colour scheme.
 - Optional resizable/scalable layout.
 - Randomize that only touches active modules and avoids silent settings.
-- A/B controls, if A/B is kept.
 - Keyboard navigation and accessibility labels.
 
 ## Milestone 4 — Validation and release (priority 3)
 
-- Add a test harness (unit tests for DSP helpers, offline render comparison).
+- Extend the test harness (offline render comparison, fuzzing, CPU benchmarks).
 - Run `pluginval` at strictness 5+ on the VST3.
 - Run `auval` on the AU component.
 - Test in at least Reaper (VST3) and Logic Pro (AU); add Ableton if available.
 - Add CI (GitHub Actions) for macOS build + pluginval; consider Windows VST3
   and Linux VST3/LV2 later.
 - Verify state round-trip, automation and preset recall in each host.
-- Fix the compiler warnings listed in [STATUS.md](STATUS.md).
+- Keep the clean build warning-free as new code lands.
 - Add a LICENSE file: the README claims GPLv3 but the repository currently has
   no `LICENSE` file.
 
@@ -136,6 +144,8 @@ Grouped from the earlier `IDEAS.md`; none of these are commitments.
 
 - [x] All four DSP modules implemented and matched against references.
 - [x] No pass-through stubs left in the signal chain.
+- [x] A/B comparison and a persistent user preset bank implemented.
+- [x] Preset, program, A/B and state behaviour covered by offline tests.
 - [ ] Presets, state and host automation verified in at least two DAWs.
 - [ ] `pluginval` strictness 5+ and `auval` pass.
 - [x] VST3, AU and Standalone artefacts built from a clean checkout.

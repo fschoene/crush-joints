@@ -79,38 +79,4 @@ namespace CrushJoints
     {
         filterOn = on;
     }
-
-    //==============================================================================
-    // A/B testing methods
-    void LadderFilter::copyAtoB()
-    {
-        cutoffB = cutoffA;
-        resonanceB = resonanceA;
-        filterOnB = filterOnA;
-    }
-
-    void LadderFilter::copyBtoA()
-    {
-        cutoffA = cutoffB;
-        resonanceA = resonanceB;
-        filterOnA = filterOnB;
-    }
-
-    void LadderFilter::toggleAB()
-    {
-        isA = ! isA;
-
-        if (isA)
-        {
-            cutoff = cutoffA;
-            resonance = resonanceA;
-            filterOn = filterOnA;
-        }
-        else
-        {
-            cutoff = cutoffB;
-            resonance = resonanceB;
-            filterOn = filterOnB;
-        }
-    }
 }

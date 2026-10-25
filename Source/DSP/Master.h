@@ -26,12 +26,6 @@ namespace CrushJoints
         void setMix(float mix);
         void setMasterOn(bool on);
 
-        // A/B testing support
-        void copyAtoB();
-        void copyBtoA();
-        void toggleAB();
-        bool isAActive() const { return isA; }
-
     private:
         float volume = 0.0f;    // -24 dB to +12 dB
         float mix = 1.0f;       // 0 = dry, 1 = wet
@@ -39,15 +33,5 @@ namespace CrushJoints
 
         float volumeGain = 1.0f;
 
-        // A/B parameter states
-        float volumeA = 0.0f;
-        float mixA = 1.0f;
-        bool masterOnA = true;
-
-        float volumeB = 0.0f;
-        float mixB = 1.0f;
-        bool masterOnB = true;
-
-        bool isA = true;
     };
 }

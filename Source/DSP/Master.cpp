@@ -98,38 +98,4 @@ namespace CrushJoints
     {
         masterOn = on;
     }
-
-    //==============================================================================
-    // A/B testing methods
-    void Master::copyAtoB()
-    {
-        volumeB = volumeA;
-        mixB = mixA;
-        masterOnB = masterOnA;
-    }
-
-    void Master::copyBtoA()
-    {
-        volumeA = volumeB;
-        mixA = mixB;
-        masterOnA = masterOnB;
-    }
-
-    void Master::toggleAB()
-    {
-        isA = ! isA;
-
-        if (isA)
-        {
-            setVolume(volumeA);
-            setMix(mixA);
-            setMasterOn(masterOnA);
-        }
-        else
-        {
-            setVolume(volumeB);
-            setMix(mixB);
-            setMasterOn(masterOnB);
-        }
-    }
 }

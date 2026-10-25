@@ -4,7 +4,8 @@
 #include "PluginProcessor.h"
 
 //==============================================================================
-class CrushJointsAudioProcessorEditor : public juce::AudioProcessorEditor
+class CrushJointsAudioProcessorEditor : public juce::AudioProcessorEditor,
+                                        private juce::ChangeListener
 {
 public:
     explicit CrushJointsAudioProcessorEditor(CrushJointsAudioProcessor&);
@@ -15,10 +16,26 @@ public:
     void resized() override;
 
 private:
+    void changeListenerCallback(juce::ChangeBroadcaster*) override;
+    void updateFromProcessor();
+    void showSavePresetDialog();
+    void showDeletePresetDialog();
+
     void randomizeParameters();
 
     CrushJointsAudioProcessor& processorRef;
     juce::AudioProcessorValueTreeState& apvts;
+
+    // Header / preset bar
+    juce::Label abLabel;
+    juce::TextButton abButtonA;
+    juce::TextButton abButtonB;
+    juce::TextButton copyABButton;
+    juce::Label presetLabel;
+    juce::ComboBox presetBox;
+    juce::TextButton savePresetButton;
+    juce::TextButton deletePresetButton;
+    juce::TextButton randomizeButton;
 
     // GUI Components
     juce::GroupComponent distortionGroup;
@@ -41,10 +58,6 @@ private:
     juce::Slider mixSlider;
     juce::ToggleButton masterOnButton;
 
-    juce::Label presetLabel;
-    juce::ComboBox presetBox;
-    juce::TextButton randomizeButton;
-
     // Parameter attachments keep the widgets in sync with the APVTS.
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
@@ -56,6 +69,8 @@ private:
 
     std::unique_ptr<ButtonAttachment> tubeOnAttachment, lpfOnAttachment;
     std::unique_ptr<ButtonAttachment> phatAttachment, compOnAttachment, masterOnAttachment;
+
+    bool updatingPresetBox = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CrushJointsAudioProcessorEditor)
 };
