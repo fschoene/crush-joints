@@ -142,6 +142,13 @@ The user's workflow preference is **incremental**: implement one task, commit, w
 
 ✅ IMPLEMENTED
 
+### Phase 1 Extension: A/B Testing
+**Goal:** Add A/B testing capability with parameter state comparison
+- Implement dual parameter states (A and B)
+- Add "Copy A to B" and "Copy B to A" buttons
+- Add toggle to switch between A/B states during real-time processing
+- Commit: `feat: add A/B testing capability`
+
 ### Phase 2: Distortion Module (Tube + Mech)
 **Goal:** Implement the core distortion using the extracted polynomial coefficient tables.
 - Add `CamelCrusherCoeffs.h` — the 101-entry `disttube_coeffs` and `distmech_coeffs` tables (exact copy from reverse-camel)
@@ -268,3 +275,6 @@ Use JUCE's `dsp::Oversampler` with 4× factor, 3rd-order filter, and `autoUpDens
 3. **A/B comparison** with reference recordings (available from the reverse-camel analysis notebook)
 4. **DAW testing:** Reaper (Windows/macOS), Logic Pro (macOS AU), Ableton Live (macOS VST3)
 5. **Regression:** Sine sweep through each module to verify no crashes, denormals, or NaN
+
+## Appendix: Additional Ideas
+See IDEAS.md for potential future enhancements and features that could be added to CrushJoints.
