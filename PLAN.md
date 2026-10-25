@@ -129,6 +129,8 @@ The user's workflow preference is **incremental**: implement one task, commit, w
 - Verify a stock JUCE audio plugin template builds (VST3 + CLAP)
 - Commit: `chore: scaffold CrushJoints project with JUCE CMake build`
 
+✅ IMPLEMENTED
+
 **Estimated effort:** 1–2 hours (mostly build time for JUCE download)
 
 ### Phase 1: Parameter Layout & Presets
