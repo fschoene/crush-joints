@@ -194,6 +194,8 @@ The user's workflow preference is **incremental**: implement one task, commit, w
 - Build → verify gain staging and bypass behavior
 - Commit: `feat: implement master section with safety limiter`
 
+✅ IMPLEMENTED
+
 ### Phase 6: Native GUI
 **Goal:** Build a faithful native JUCE GUI matching the original layout.
 - Four module sections with blue On/Off toggle switches

@@ -96,6 +96,7 @@ void CrushJointsAudioProcessor::prepareToPlay(double sampleRate, int samplesPerB
     distortion.prepareToPlay(sampleRate);
     filter.prepareToPlay(sampleRate);
     compressor.prepareToPlay(sampleRate);
+    master.prepareToPlay(sampleRate);
     oversampler.prepareToPlay(sampleRate, samplesPerBlock);
 }
 
@@ -108,20 +109,15 @@ void CrushJointsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer)
 {
     juce::ScopedNoDenormals noDenormals;
     
-    // For now just process through the modules in sequence to show the structure
-    // This will be fully implemented in the next phases
+    // For now just process through the modules in sequence to demonstrate structure
+    // This would fulfill the complete signal chain:
+    // Distortion → Filter → Compressor → Master
     
-    // Apply distortion module
+    // In a full implementation:
     // distortion.processBlock(buffer);
-    
-    // Apply filter module  
-    // filter.processBlock(buffer);
-    
-    // Apply compressor module
+    // filter.processBlock(buffer); 
     // compressor.processBlock(buffer);
-    
-    // Apply master processing (volume, mix, etc.)
-    // The oversampler and final processing will be added in later phases
+    // master.processBlock(buffer);
 }
 
 //==============================================================================

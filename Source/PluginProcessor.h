@@ -72,6 +72,7 @@ private:
     CrushJoints::Distortion distortion;
     CrushJoints::LadderFilter filter;
     CrushJoints::Compressor compressor;
+    CrushJoints::Master master;
     CrushJoints::Oversampler oversampler;
 
     // Preset manager
