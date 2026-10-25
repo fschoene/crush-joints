@@ -140,6 +140,8 @@ The user's workflow preference is **incremental**: implement one task, commit, w
 - Build → verify preset switching works in EditorHost or a DAW
 - Commit: `feat: add APVTS parameter layout with 12 presets`
 
+✅ IMPLEMENTED
+
 ### Phase 2: Distortion Module (Tube + Mech)
 **Goal:** Implement the core distortion using the extracted polynomial coefficient tables.
 - Add `CamelCrusherCoeffs.h` — the 101-entry `disttube_coeffs` and `distmech_coeffs` tables (exact copy from reverse-camel)

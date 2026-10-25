@@ -92,14 +92,7 @@ bool CrushJointsAudioProcessor::isBusesLayoutSupported(const BusesLayout& layout
 //==============================================================================
 void CrushJointsAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
-    // Setup oversampler
-    oversampler.prepareToPlay(sampleRate, samplesPerBlock);
-    
-    // Setup filter
-    filter.prepareToPlay(sampleRate);
-    
-    // Setup compressor
-    compressor.prepareToPlay(sampleRate);
+    // For now, just set up a placeholder
 }
 
 void CrushJointsAudioProcessor::releaseResources()
@@ -111,8 +104,13 @@ void CrushJointsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer)
 {
     juce::ScopedNoDenormals noDenormals;
     
-    // For now, just pass the signal through (no DSP yet)
-    // In future phases, we'll implement the full signal chain
+    // This is a placeholder for the moment - phase 1 only sets up parameters/presets
+    // The full signal chain processing will come in later phases
+    
+    // For now just pass through the audio
+    // In the real implementation, this would be:
+    // buffer.applyGain(mixParam->get()); // Apply mix setting
+    // Process the distortion, filter, compressor, etc.
 }
 
 //==============================================================================
