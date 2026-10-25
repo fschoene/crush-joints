@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <cmath>
 
 //==============================================================================
 CrushJointsAudioProcessor::CrushJointsAudioProcessor(juce::File userPresetFile)
@@ -54,9 +55,12 @@ CrushJointsAudioProcessor::CrushJointsAudioProcessor(juce::File userPresetFile)
         volumeParam, mixParam, masterOnParam
     };
 
-    // Initialize presets and the A/B snapshots from the defaults.
+    // Initialize presets, A/B snapshots and parameter locks.
     presets.initPresets();
     initialiseABState();
+
+    for (auto& lock : parameterLocks)
+        lock.store(false);
 }
 
 CrushJointsAudioProcessor::~CrushJointsAudioProcessor()
@@ -323,6 +327,57 @@ void CrushJointsAudioProcessor::copyActiveABToInactive()
     sendChangeMessage();
 }
 
+bool CrushJointsAudioProcessor::isParameterLocked(int index) const
+{
+    if (index < 0 || index >= numLockableParameters)
+        return false;
+
+    return parameterLocks[static_cast<size_t>(index)].load();
+}
+
+void CrushJointsAudioProcessor::setParameterLocked(int index, bool locked)
+{
+    if (index < 0 || index >= numLockableParameters)
+        return;
+
+    parameterLocks[static_cast<size_t>(index)].store(locked);
+}
+
+void CrushJointsAudioProcessor::randomizeUnlockedParameters()
+{
+    juce::Random random;
+
+    auto randomiseNormally = [&](int index, juce::RangedAudioParameter* parameter)
+    {
+        if (! isParameterLocked(index))
+            parameter->setValueNotifyingHost(random.nextFloat());
+    };
+
+    randomiseNormally(lockableTube, tubeParam);
+    randomiseNormally(lockableMech, mechParam);
+
+    if (! isParameterLocked(lockableCutoff))
+    {
+        // Logarithmic sweep from 200 Hz to 18 kHz.
+        const float cutoff = 200.0f * std::pow(90.0f, random.nextFloat());
+        cutoffParam->setValueNotifyingHost(cutoffParam->convertTo0to1(cutoff));
+    }
+
+    randomiseNormally(lockableRes, resParam);
+    randomiseNormally(lockableAmount, amountParam);
+
+    if (! isParameterLocked(lockableVolume))
+    {
+        const float volumeDb = random.nextFloat() * 18.0f - 12.0f; // -12 .. +6 dB
+        volumeParam->setValueNotifyingHost(volumeParam->convertTo0to1(volumeDb));
+    }
+
+    randomiseNormally(lockableMix, mixParam);
+
+    // tube_on, lpf_on, phat, comp_on and master_on are deliberately not
+    // randomised: flipping a module off would often produce silence.
+}
+
 //==============================================================================
 // Parameter snapshots and preset helpers
 CrushJointsAudioProcessor::ParameterSnapshot CrushJointsAudioProcessor::captureParameterSnapshot() const
@@ -421,6 +476,16 @@ void CrushJointsAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 
     state.appendChild(abState, nullptr);
 
+    juce::ValueTree lockState("LOCKS");
+
+    for (int i = 0; i < numLockableParameters; ++i)
+        lockState.setProperty("l" + juce::String(i), parameterLocks[static_cast<size_t>(i)].load(), nullptr);
+
+    if (auto existing = state.getChildWithName("LOCKS"); existing.isValid())
+        state.removeChild(existing, nullptr);
+
+    state.appendChild(lockState, nullptr);
+
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
     copyXmlToBinary(*xml, destData);
 }
@@ -440,13 +505,17 @@ void CrushJointsAudioProcessor::setStateInformation(const void* data, int sizeIn
     currentProgram = static_cast<int>(state.getProperty("currentProgram", 0));
 
     auto abState = state.getChildWithName("AB");
+    auto lockState = state.getChildWithName("LOCKS");
 
-    // Keep APVTS.state limited to parameter data; program and A/B state are
-    // re-attached on every save.
+    // Keep APVTS.state limited to parameter data; program, A/B and lock state
+    // are re-attached on every save.
     state.removeProperty("currentProgram", nullptr);
 
     if (abState.isValid())
         state.removeChild(abState, nullptr);
+
+    if (lockState.isValid())
+        state.removeChild(lockState, nullptr);
 
     apvts.replaceState(state);
 
@@ -475,6 +544,13 @@ void CrushJointsAudioProcessor::setStateInformation(const void* data, int sizeIn
             abSlots[0] = captureParameterSnapshot();
             abSlots[1] = abSlots[0];
         }
+    }
+
+    for (int i = 0; i < numLockableParameters; ++i)
+    {
+        const auto propertyName = "l" + juce::String(i);
+        parameterLocks[static_cast<size_t>(i)].store(
+            lockState.isValid() && static_cast<bool>(lockState.getProperty(propertyName, false)));
     }
 
     currentProgram = juce::jlimit(0, juce::jmax(0, getNumPrograms() - 1), currentProgram);

@@ -36,9 +36,9 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 |------|--------|-------|
 | CMake build | ✅ working | VST3, AU and Standalone on macOS; clean build warning-free |
 | Offline DSP tests | ✅ passing | `CrushJointsTests`, 8 test groups |
-| Processor tests | ✅ passing | `CrushJointsProcessorTests`, A/B, programs and state |
+| Processor tests | ✅ passing | `CrushJointsProcessorTests`, A/B, programs, state, locks and randomize |
 | Plugin entry point | ✅ working | `createPluginFilter()` present |
-| Processor/buses/state | ✅ working | stereo in/out; APVTS XML plus `currentProgram` and A/B slots |
+| Processor/buses/state | ✅ working | stereo in/out; APVTS XML plus `currentProgram`, A/B slots and lock flags |
 | Parameter set | ✅ working | 12 parameters, editor attachments bound |
 | Distortion DSP | ✅ implemented | reverse-camel 101-entry Tube/Mech tables, Tube→Mech series, bypass |
 | Filter DSP | ✅ implemented | ZDF/TPT SVF low-pass, Q 0.7071–4.2071, wide-open bypass |
@@ -49,7 +49,7 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 | User presets | ✅ working | save, overwrite, delete in the editor; rename via host API; XML in user app data |
 | Program API | ✅ working | real current program, host program names and renames |
 | A/B comparison | ✅ working | processor-level snapshots; A/B and copy in the editor |
-| GUI shell | ⚠️ partial | A/B and preset saving are in; value readout, meter, MIDI Learn, right-click modes, styling and resizing are missing |
+| GUI shell | ⚠️ partial | labels, dark blue/yellow theme, value readout, double-click reset, locks and resizing are in; meter, MIDI Learn, right-click modes and accessibility are missing |
 | Host validation | ❌ not started | no pluginval/auval/DAW runs |
 
 ## 3. What works end to end
@@ -57,8 +57,14 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 - The plugin loads as a VST3/AU/Standalone bundle; the Standalone was launched
   for six seconds without crashing or logging errors.
 - The editor opens with four module columns, A/B controls, the preset bar,
-  Save/Delete and Randomize.
+  Save/Delete, Randomize and a value readout. The window scales from 80% to
+  150% with a fixed aspect ratio.
+- Every knob has a visible uppercase label, a padlock button and a high-contrast
+  dark blue/yellow style. Double-click resets a knob to its parameter default.
 - Knobs and toggles update the APVTS parameters immediately.
+- Randomize only changes continuous parameters; it skips every on/off switch
+  and leaves locked parameters untouched. The readout shows the current preset
+  name, or the dragged knob's value while adjusting.
 - Selecting a factory or user preset writes all 12 parameter values.
 - `Save...` captures the current settings as a user preset in
   `~/Library/Application Support/CrushJoints/Presets.xml` on macOS. Saving a
@@ -70,8 +76,8 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
   the slot being left, then applies the other snapshot through
   `setValueNotifyingHost`, so host automation sees the change. `A -> B` /
   `B -> A` copies the active snapshot into the inactive one.
-- Plugin state is saved and restored as APVTS XML plus `currentProgram` and the
-  two A/B snapshots.
+- Plugin state is saved and restored as APVTS XML plus `currentProgram`, the
+  two A/B snapshots and the seven lock flags.
 - Audio is processed through the full chain:
   - **Distortion:** Tube table stage followed by Mech table stage, with the
     reference gain/polynomial formulas and linear interpolation between table
@@ -111,9 +117,12 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 1. A/B switching captures edits before leaving a slot.
 2. Copying the active slot into the inactive slot.
 3. `setCurrentProgram`/`getCurrentProgram` and `getProgramName`.
-4. Plugin state round-trip including `currentProgram`, the active A/B slot and
-   both snapshots.
+4. Plugin state round-trip including `currentProgram`, the active A/B slot,
+   both snapshots and the lock flags.
 5. Custom preset save/delete through the processor and factory/user program metadata.
+6. Locked parameters staying fixed during Randomize and module switches never
+   being randomised.
+7. Optional editor snapshots at 80%, 100% and 150% (`CRUSHJOINTS_RENDER_UI=1`).
 
 Result:
 
@@ -133,10 +142,12 @@ Ordered roughly by impact.
 2. **No oversampling.** This matches reverse-camel and keeps the dry/wet path
    latency-free, but high Mech settings can alias like the original. The
    `Oversampler` wrapper exists for a future optional quality mode.
-3. **GUI feature gaps.** No value readout, output level meter, MIDI Learn,
-   Linear/Circular right-click menu, custom skin or resizable layout.
-4. **Randomize is naive.** It assigns uniform random normalised values to every
-   parameter, including on/off switches, so it can produce silence.
+3. **GUI feature gaps.** No output level meter, MIDI Learn, Linear/Circular
+   right-click menu, keyboard navigation or accessibility labels. The theme is
+   CamelCrusher-inspired rather than pixel-exact.
+4. **Randomize can still produce extreme settings.** It leaves module switches
+   alone and respects locks, but it can set several parameters to their
+   extremes at once. There is no "intelligent" constraint yet.
 5. **Master volume range differs from the reference.** The plugin uses
    -24..+12 dB (CrushClone's range, required by presets such as MAS Loudener at
    +2 dB) instead of the original -51..0 dB.

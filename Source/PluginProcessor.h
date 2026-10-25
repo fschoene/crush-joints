@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <array>
+#include <atomic>
 #include "DSP/Distortion.h"
 #include "DSP/LadderFilter.h"
 #include "DSP/Compressor.h"
@@ -68,6 +69,27 @@ public:
     void copyActiveABToInactive();
 
     //==============================================================================
+    // Randomize / parameter locks
+    enum LockableParameter
+    {
+        lockableTube = 0,
+        lockableMech,
+        lockableCutoff,
+        lockableRes,
+        lockableAmount,
+        lockableVolume,
+        lockableMix,
+        numLockableParameters
+    };
+
+    /** Randomises the continuous parameters that are not locked. Module
+        on/off and Phat switches are intentionally left unchanged. */
+    void randomizeUnlockedParameters();
+
+    bool isParameterLocked(int index) const;
+    void setParameterLocked(int index, bool locked);
+
+    //==============================================================================
     // Parameters
     juce::AudioParameterFloat* tubeParam;
     juce::AudioParameterFloat* mechParam;
@@ -110,6 +132,8 @@ private:
     int activeABSlot = 0;
     int currentProgram = 0;
     mutable juce::CriticalSection abLock;
+
+    std::array<std::atomic<bool>, numLockableParameters> parameterLocks {};
 
     // DSP processors
     CrushJoints::Distortion distortion;

@@ -23,9 +23,10 @@ short and links here.
 - **Presets/state:** 12 factory presets, disk-backed user presets (save,
   overwrite, delete in the editor), real program API, A/B snapshots and full state
   persistence.
-- **GUI:** interactive with A/B, Save/Delete, preset sync and Randomize; value
-  readout, level meter, MIDI Learn and right-click knob modes are still
-  missing.
+- **GUI:** interactive and resizable, with labelled knobs, a dark blue/yellow
+  theme, A/B, Save/Delete, preset sync, a value readout, double-click reset and
+  per-parameter Randomize locks. Output meter, MIDI Learn and right-click knob
+  modes are still missing.
 - **Validation:** `pluginval`, `auval` and DAW testing have not been run yet.
 
 See [STATUS.md](STATUS.md) for the detailed breakdown.

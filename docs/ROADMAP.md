@@ -62,18 +62,29 @@ Still to verify under a real host: automation of all 12 parameters, preset
 recall and A/B switching while recording automation. This is tracked in
 Milestone 4.
 
-## Milestone 3 — GUI completion (priority 2)
+## Milestone 3 — GUI completion (in progress)
 
-Reference features still missing:
+Completed:
 
-- Value readout that shows the preset name, then the adjusted parameter value.
-- Output level meter / clipping indicator fed by the processor.
-- Right-click knob menu with Linear/Circular drag, MIDI Learn and value
-  display.
-- Blue illuminated module switches and a CamelCrusher-like colour scheme.
-- Optional resizable/scalable layout.
-- Randomize that only touches active modules and avoids silent settings.
-- Keyboard navigation and accessibility labels.
+- [x] Value readout showing the preset name, then the dragged parameter value.
+- [x] CamelCrusher-inspired dark blue + yellow theme with high-contrast knobs,
+      arcs and switches.
+- [x] Visible labels for every parameter knob.
+- [x] Double-click reset to each parameter's default value.
+- [x] Per-parameter padlock buttons that exclude a value from Randomize.
+- [x] Randomize now skips on/off and Phat switches and respects locks.
+- [x] Lock flags persisted in plugin state.
+- [x] Resizable/scalable layout from 80% to 150% with a fixed aspect ratio.
+- [x] Visual snapshots at multiple sizes via `CRUSHJOINTS_RENDER_UI=1`.
+
+Remaining:
+
+- [ ] Output level meter / clipping indicator fed by the processor.
+- [ ] Right-click knob menu with Linear/Circular drag and MIDI Learn.
+- [ ] Keyboard navigation and accessibility labels.
+- [ ] Pixel-exact CamelCrusher styling (the current theme is inspired, not a
+      reproduction).
+- [ ] Optional "intelligent" Randomize constraints to avoid extreme settings.
 
 ## Milestone 4 — Validation and release (priority 3)
 

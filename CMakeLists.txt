@@ -66,6 +66,8 @@ target_sources(CrushJoints
     PRIVATE
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
+        Source/GUI/CrushJointsLookAndFeel.cpp
+        Source/GUI/LockButton.cpp
         Source/DSP/Oversampler.cpp
         Source/DSP/Distortion.cpp
         Source/DSP/LadderFilter.cpp
@@ -142,6 +144,8 @@ if(CRUSHJOINTS_BUILD_TESTS)
             Tests/ProcessorTests.cpp
             Source/PluginProcessor.cpp
             Source/PluginEditor.cpp
+            Source/GUI/CrushJointsLookAndFeel.cpp
+            Source/GUI/LockButton.cpp
             Source/DSP/Distortion.cpp
             Source/DSP/LadderFilter.cpp
             Source/DSP/Compressor.cpp

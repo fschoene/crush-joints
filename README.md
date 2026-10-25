@@ -12,6 +12,8 @@ plugin, featuring:
 - Master volume and mix controls
 - 12 factory presets plus saveable user presets
 - A/B parameter comparison with copy-between-slots
+- Per-parameter randomize locks with double-click reset
+- Resizable dark blue/yellow interface with labelled controls
 
 > **Current status:** the full signal chain (Distortion → Filter → Compressor →
 > Master), A/B comparison and user preset bank are implemented and covered by

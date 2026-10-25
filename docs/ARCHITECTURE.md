@@ -37,6 +37,9 @@ crush-joints/
 └── Source/
     ├── PluginProcessor.h/.cpp      # APVTS, presets, signal chain, plugin entry
     ├── PluginEditor.h/.cpp         # native JUCE editor
+    ├── GUI/
+    │   ├── CrushJointsLookAndFeel.h/.cpp  # dark blue / yellow theme
+    │   └── LockButton.h/.cpp              # padlock button for randomize locks
     ├── DSP/
     │   ├── Distortion.h/.cpp       # Tube + Mech waveshapers and coefficient tables
     │   ├── LadderFilter.h/.cpp     # SVF low-pass wrapper
@@ -207,47 +210,62 @@ Notes:
 tree plus:
 
 - `currentProgram`,
-- an `AB` child tree containing both 12-value snapshots and the active slot.
+- an `AB` child tree containing both 12-value snapshots and the active slot,
+- a `LOCKS` child tree containing the seven randomize lock flags.
 
 On restore, the stored parameter values are authoritative; the program index
 is used for display and clamped if the user preset bank changed. Legacy state
-without an `AB` child initialises both slots from the restored parameters.
+without an `AB` child initialises both slots from the restored parameters;
+missing lock flags default to unlocked.
 
 ## 7. Editor
 
-The editor is a native JUCE component, currently 860×440:
+The editor is a native JUCE component with an 860×440 design resolution:
 
-- Header: "CrushJoints" title, A/B buttons, copy button, patch label, preset
+- Header: "CRUSHJOINTS" title, A/B buttons, copy button, patch label, preset
   combo, Save/Delete and Randomize.
 - Four equal module columns: Distortion, Filter, Compressor, Master.
+- Every knob has a visible uppercase label and a small padlock button.
 - Knobs use `RotaryHorizontalVerticalDrag` with a text box below.
+- Double-clicking a knob resets it to the parameter's default (Tube/Mech/Amount
+  = 0, Cutoff = 20 kHz, Res = 0, Volume = 0 dB, Mix = 100%).
 - On/off and Phat controls are `ToggleButton`s.
+- The area below the modules contains a readout showing the current preset;
+  while a knob is dragged it shows the parameter name and value.
+- A custom `CrushJointsLookAndFeel` uses CamelCrusher-inspired dark blue and
+  yellow, with high-contrast arcs and switch indicators.
 - All controls use `AudioProcessorValueTreeState::SliderAttachment` and
   `ButtonAttachment`, so parameter changes are reflected immediately and are
   undo/host-automation safe.
-- `Randomize` sets every parameter to a uniform random normalised value.
+- `Randomize` only changes continuous parameters. It skips module switches and
+  respects the per-parameter locks.
 - The A/B buttons switch snapshots; the copy button copies the active slot
   into the other one.
 - `Save...` opens a name dialog and writes a user preset. `Delete` is enabled
   only for user presets and asks for confirmation.
 - The editor listens to processor change broadcasts, so host-driven program
   changes and newly saved/deleted presets refresh the combo automatically.
+- The window is resizable from 80% to 150% with a fixed 860:440 aspect ratio.
+  All controls live in a design-sized content component that is transformed as
+  a unit, so fonts, knobs and padding scale together.
 
 Implemented versus reference GUI:
 
 | Feature | Status |
 |---------|--------|
 | Four module groups | implemented |
-| Knobs and on/off toggles | implemented |
+| Knobs, labels and on/off toggles | implemented |
 | Preset dropdown | implemented, including host sync |
 | Save/Delete user presets | implemented |
 | A/B comparison + copy | implemented |
-| Randomize | implemented, but not "intelligent" and can turn modules off |
-| Value readout | missing |
+| Per-parameter randomize locks | implemented and persisted |
+| Double-click reset to default | implemented |
+| Value readout | implemented (preset name / dragged knob value) |
+| Dark blue + yellow theme | implemented |
+| Resizable/scalable layout | implemented (80–150%, fixed aspect) |
 | Output level meter | missing |
-| MIDI Learn / right-click knob menu | missing |
-| Custom CamelCrusher styling | missing (default JUCE look) |
-| Resizable/scalable layout | missing (fixed size) |
+| MIDI Learn / right-click knob mode menu | missing |
+| Keyboard navigation / accessibility labels | missing |
 ## 8. DSP module structure
 
 Each DSP class follows the same pattern:
@@ -284,8 +302,14 @@ verifies:
 
 - A/B switching, edit capture, slot copying and restoration,
 - program changes and the real `getCurrentProgram()` value,
-- plugin state round-trip including `currentProgram` and both A/B slots,
-- user preset save/delete through the processor using a temporary bank file.
+- plugin state round-trip including `currentProgram`, both A/B slots and the
+  lock flags,
+- user preset save/delete through the processor using a temporary bank file,
+- locked parameters staying unchanged during Randomize and module switches
+  never being randomised.
+
+`CRUSHJOINTS_RENDER_UI=1` also renders 80%, 100% and 150% editor snapshots to
+`/tmp/crush-editor-*.png` for visual inspection.
 
 Run both after building:
 
