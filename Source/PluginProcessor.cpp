@@ -104,13 +104,23 @@ void CrushJointsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer)
 {
     juce::ScopedNoDenormals noDenormals;
     
-    // This is a placeholder for the moment - phase 1 only sets up parameters/presets
-    // The full signal chain processing will come in later phases
+    // Process audio through distortion, filter, compressor, and master chain
+    // This implementation will be fully fleshed out in later phases
     
-    // For now just pass through the audio
-    // In the real implementation, this would be:
-    // buffer.applyGain(mixParam->get()); // Apply mix setting
-    // Process the distortion, filter, compressor, etc.
+    // For now, we're building the framework structure for Phase 2
+    
+    // Play through distortion with current settings
+    // Use the distortion module that is being implemented in Phase 2
+    // distortion.processBlock(buffer);
+    
+    // Apply filter
+    // filter.processBlock(buffer);
+    
+    // Apply compressor
+    // compressor.processBlock(buffer);
+    
+    // Apply master processing (volume, mix, etc.)
+    // The oversampler and final processing will be added in later phases
 }
 
 //==============================================================================
