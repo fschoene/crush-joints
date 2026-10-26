@@ -245,6 +245,8 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
             valueReadout.setText(name + ": " + (button.getToggleState() ? "ON" : "OFF"),
                                  juce::dontSendNotification);
         };
+
+        button.onStateChange = [this] { updateModuleVisuals(); };
     };
 
     hookToggleReadout(tubeOnButton, "DISTORTION");
@@ -295,6 +297,8 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
 
     processorRef.addChangeListener(this);
     updateFromProcessor();
+    updateModuleVisuals();
+    startTimerHz(10);
 
     // The window can be scaled from 80% to 150%; the content is laid out once
     // in design coordinates and transformed as a whole.
@@ -312,6 +316,7 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
 
 CrushJointsAudioProcessorEditor::~CrushJointsAudioProcessorEditor()
 {
+    stopTimer();
     processorRef.removeChangeListener(this);
     setLookAndFeel(nullptr);
 }
@@ -393,7 +398,7 @@ void CrushJointsAudioProcessorEditor::layoutContent()
         group.setBounds(bounds);
         auto content = bounds.reduced(10).withTrimmedTop(20);
 
-        auto toggleArea = content.removeFromTop(26);
+        auto toggleArea = content.removeFromBottom(28);
         if (toggle2 != nullptr)
         {
             toggle1.setBounds(toggleArea.removeFromLeft(toggleArea.getWidth() / 2).reduced(2, 0));
@@ -401,10 +406,9 @@ void CrushJointsAudioProcessorEditor::layoutContent()
         }
         else
         {
-            toggle1.setBounds(toggleArea.removeFromLeft(90).reduced(2, 0));
+            toggle1.setBounds(toggleArea.withSizeKeepingCentre(
+                juce::jmin(toggleArea.getWidth(), 90), 24));
         }
-
-        content.removeFromTop(2);
 
         if (slider2 != nullptr)
         {
@@ -446,6 +450,47 @@ void CrushJointsAudioProcessorEditor::layoutContent()
 void CrushJointsAudioProcessorEditor::changeListenerCallback(juce::ChangeBroadcaster*)
 {
     updateFromProcessor();
+    updateModuleVisuals();
+}
+
+void CrushJointsAudioProcessorEditor::timerCallback()
+{
+    updateModuleVisuals();
+}
+
+void CrushJointsAudioProcessorEditor::updateModuleVisuals()
+{
+    const bool masterOn = masterOnButton.getToggleState();
+
+    auto apply = [masterOn](std::initializer_list<juce::Component*> components, bool moduleOn)
+    {
+        const float alpha = (masterOn && moduleOn) ? 1.0f : 0.38f;
+
+        for (auto* component : components)
+            component->setAlpha(alpha);
+    };
+
+    apply({ &distortionGroup, &tubeLabel, &mechLabel, &tubeSlider,
+            &mechSlider, &tubeLock, &mechLock },
+          tubeOnButton.getToggleState());
+
+    apply({ &filterGroup, &cutoffLabel, &resLabel, &cutoffSlider,
+            &resSlider, &cutoffLock, &resLock },
+          lpfOnButton.getToggleState());
+
+    apply({ &compressorGroup, &amountLabel, &amountSlider, &amountLock, &phatButton },
+          compOnButton.getToggleState());
+
+    apply({ &masterGroup, &volumeLabel, &mixLabel, &volumeSlider,
+            &mixSlider, &volumeLock, &mixLock },
+          true);
+
+    // The module switches stay bright so they remain easy to find and click.
+    tubeOnButton.setAlpha(1.0f);
+    lpfOnButton.setAlpha(1.0f);
+    compOnButton.setAlpha(1.0f);
+    phatButton.setAlpha(masterOn && compOnButton.getToggleState() ? 1.0f : 0.38f);
+    masterOnButton.setAlpha(1.0f);
 }
 
 void CrushJointsAudioProcessorEditor::updateFromProcessor()
@@ -478,6 +523,8 @@ void CrushJointsAudioProcessorEditor::updateFromProcessor()
     deletePresetButton.setEnabled(processorRef.isUserPreset(currentProgram));
     valueReadout.setText("Preset: " + processorRef.getProgramName(currentProgram),
                          juce::dontSendNotification);
+
+    updateModuleVisuals();
 
     const std::pair<LockButton*, int> locks[] = {
         { &tubeLock,   CrushJointsAudioProcessor::lockableTube },

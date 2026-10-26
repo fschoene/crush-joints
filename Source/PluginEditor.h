@@ -10,7 +10,8 @@ using LockButton = CrushJoints::LockButton;
 
 //==============================================================================
 class CrushJointsAudioProcessorEditor : public juce::AudioProcessorEditor,
-                                        private juce::ChangeListener
+                                        private juce::ChangeListener,
+                                        private juce::Timer
 {
 public:
     explicit CrushJointsAudioProcessorEditor(CrushJointsAudioProcessor&);
@@ -28,7 +29,9 @@ private:
     };
 
     void changeListenerCallback(juce::ChangeBroadcaster*) override;
+    void timerCallback() override;
     void updateFromProcessor();
+    void updateModuleVisuals();
     void layoutContent();
 
     void addToContent(juce::Component& component) { contentComponent.addAndMakeVisible(component); }

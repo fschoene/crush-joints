@@ -49,7 +49,7 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 | User presets | ✅ working | save, overwrite, delete in the editor; rename via host API; XML in user app data |
 | Program API | ✅ working | real current program, host program names and renames |
 | A/B comparison | ✅ working | processor-level snapshots; A/B and copy in the editor |
-| GUI shell | ⚠️ partial | labels, dark blue/yellow theme, value readout, double-click reset, locks and resizing are in; meter, MIDI Learn, right-click modes and accessibility are missing |
+| GUI shell | ⚠️ partial | labels, dark blue/yellow theme, value readout, double-click reset, locks, resizing and bypass dimming are in; meter, MIDI Learn, right-click modes and accessibility are missing |
 | Host validation | ❌ not started | no pluginval/auval/DAW runs |
 
 ## 3. What works end to end
@@ -58,7 +58,8 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
   for six seconds without crashing or logging errors.
 - The editor opens with four module columns, A/B controls, the preset bar,
   Save/Delete, Randomize and a value readout. The window scales from 80% to
-  150% with a fixed aspect ratio.
+  150% with a fixed aspect ratio. Modules dim when switched off; turning Master
+  off dims all four module containers to show full bypass.
 - Every knob has a visible uppercase label, a padlock button and a high-contrast
   dark blue/yellow style. Double-click resets a knob to its parameter default.
 - Knobs and toggles update the APVTS parameters immediately.

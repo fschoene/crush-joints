@@ -75,6 +75,7 @@ Completed:
 - [x] Randomize now skips on/off and Phat switches and respects locks.
 - [x] Lock flags persisted in plugin state.
 - [x] Resizable/scalable layout from 80% to 150% with a fixed aspect ratio.
+- [x] Module containers dim when bypassed; Master off dims all modules.
 - [x] Visual snapshots at multiple sizes via `CRUSHJOINTS_RENDER_UI=1`.
 
 Remaining:

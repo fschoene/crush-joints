@@ -226,8 +226,10 @@ The editor is a native JUCE component with an 860×440 design resolution:
   combo, Save/Delete and Randomize.
 - Four equal module columns: Distortion, Filter, Compressor, Master.
 - Every knob has a visible uppercase label and a small padlock button.
-- Module ON switches (and PHAT) sit at the top of each module, directly under
-  the module title, so bypass state is immediately visible.
+- Module ON switches (and PHAT) sit at the bottom of each module.
+- Switching a module off dims its panel, labels, knobs and locks; the switch
+  itself stays bright so it remains easy to find. Turning Master off dims every
+  module container to show that the whole plugin is bypassed.
 - Knobs use `RotaryHorizontalVerticalDrag` with a text box below.
 - Double-clicking a knob resets it to the parameter's default (Tube/Mech/Amount
   = 0, Cutoff = 20 kHz, Res = 0, Volume = 0 dB, Mix = 100%).
@@ -265,6 +267,7 @@ Implemented versus reference GUI:
 | Value readout | implemented (preset name / dragged knob value) |
 | Dark blue + yellow theme | implemented |
 | Resizable/scalable layout | implemented (80–150%, fixed aspect) |
+| Dimmed modules when bypassed | implemented (Master off dims all modules) |
 | Output level meter | missing |
 | MIDI Learn / right-click knob mode menu | missing |
 | Keyboard navigation / accessibility labels | missing |

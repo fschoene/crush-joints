@@ -24,9 +24,10 @@ short and links here.
   overwrite, delete in the editor), real program API, A/B snapshots and full state
   persistence.
 - **GUI:** interactive and resizable, with labelled knobs, a dark blue/yellow
-  theme, A/B, Save/Delete, preset sync, a value readout, double-click reset and
-  per-parameter Randomize locks. Output meter, MIDI Learn and right-click knob
-  modes are still missing.
+  theme, A/B, Save/Delete, preset sync, a value readout, double-click reset,
+  per-parameter Randomize locks and bypass dimming (Master off dims all
+  modules). Output meter, MIDI Learn and right-click knob modes are still
+  missing.
 - **Validation:** `pluginval`, `auval` and DAW testing have not been run yet.
 
 See [STATUS.md](STATUS.md) for the detailed breakdown.

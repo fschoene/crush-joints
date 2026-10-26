@@ -114,35 +114,49 @@ namespace
         if (std::getenv("CRUSHJOINTS_RENDER_UI") == nullptr)
             return;
 
-        CrushJointsAudioProcessor processor;
-        processor.setParameterLocked(CrushJointsAudioProcessor::lockableTube, true);
-        processor.setParameterLocked(CrushJointsAudioProcessor::lockableRes, true);
-        std::unique_ptr<juce::AudioProcessorEditor> editor(processor.createEditor());
-
-        if (editor == nullptr)
-            return;
-
-        editor->setVisible(true);
-
-        for (const auto& size : { std::pair<int, int> { 688, 352 },
-                                  std::pair<int, int> { 860, 440 },
-                                  std::pair<int, int> { 1290, 660 } })
+        auto renderState = [](const juce::String& tag, bool masterOff)
         {
-            editor->setSize(size.first, size.second);
+            CrushJointsAudioProcessor processor;
+            processor.setParameterLocked(CrushJointsAudioProcessor::lockableTube, true);
+            processor.setParameterLocked(CrushJointsAudioProcessor::lockableRes, true);
 
-            const auto image = editor->createComponentSnapshot(editor->getLocalBounds());
-            const juce::File file("/tmp/crush-editor-" + juce::String(size.first)
-                                  + "x" + juce::String(size.second) + ".png");
-            file.deleteFile();
-            auto stream = file.createOutputStream();
-
-            if (stream != nullptr)
+            if (masterOff)
             {
-                juce::PNGImageFormat png;
-                png.writeImageToStream(image, *stream);
-                std::cout << "Wrote " << file.getFullPathName() << "\n";
+                auto* masterOn = processor.getAPVTS().getParameter("master_on");
+                masterOn->setValueNotifyingHost(0.0f);
             }
-        }
+
+            std::unique_ptr<juce::AudioProcessorEditor> editor(processor.createEditor());
+
+            if (editor == nullptr)
+                return;
+
+            editor->setVisible(true);
+
+            for (const auto& size : { std::pair<int, int> { 688, 352 },
+                                      std::pair<int, int> { 860, 440 },
+                                      std::pair<int, int> { 1290, 660 } })
+            {
+                editor->setSize(size.first, size.second);
+
+                const auto image = editor->createComponentSnapshot(editor->getLocalBounds());
+                const juce::File file("/tmp/crush-editor-" + tag + "-"
+                                      + juce::String(size.first) + "x"
+                                      + juce::String(size.second) + ".png");
+                file.deleteFile();
+                auto stream = file.createOutputStream();
+
+                if (stream != nullptr)
+                {
+                    juce::PNGImageFormat png;
+                    png.writeImageToStream(image, *stream);
+                    std::cout << "Wrote " << file.getFullPathName() << "\n";
+                }
+            }
+        };
+
+        renderState("default", false);
+        renderState("master-off", true);
     }
 
     juce::AudioBuffer<float> renderProcessor(CrushJointsAudioProcessor& processor,
