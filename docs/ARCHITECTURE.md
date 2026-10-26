@@ -130,7 +130,8 @@ Audio In
 
 Distortion always runs the reference Tube stage followed by the Mech stage.
 The filter bypasses itself when it is off, wide open and non-resonant. The
-compressor bypasses when it is off or Amount is near zero. Master applies the
+compressor bypasses when it is off, or when Amount is near zero and Phat is
+off. Master applies the
 mix, volume, a hard ±2.0 limiter and NaN/Inf sanitation.
 
 There is currently **no oversampling** in the signal path, matching the
@@ -298,6 +299,9 @@ verifies:
 - distortion transparency at amount 0 and bypass at `tube_on = false`,
 - low-pass attenuation and filter bypass,
 - compressor gain reduction, finite output and bypass,
+- compressor level behaviour (transparent at Amount 0, makeup follows the
+  curve, progressive squash) and Phat (bass tilt, no thinning, click-free
+  automation),
 - master volume, limiter, bypass and dry/wet mix,
 - the preset bank, including the Telephone flags,
 - custom preset save/overwrite/rename/delete and XML round-trip through a

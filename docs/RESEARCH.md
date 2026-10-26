@@ -154,17 +154,35 @@ Characteristics:
 - Not a transparent utility compressor: it is a density/pump tool intended for
   already-distorted signals.
 
-CrushClone's implementation uses a peak detector (maximum absolute sample
-across channels) smoothed by a one-pole attack/release filter, then a
-soft-knee gain computer. CrushJoints follows the same topology; the attack is
-1–10 ms and the release 50–150 ms, both faster at higher Amount.
+**Provenance warning.** No source documents the original's algorithm. The
+manual only says "sophisticated and responsive soft-limiting compressor", and
+reviewers describe it as OTT-like, dense and not subtle. The threshold, ratio,
+attack/release, knee and Phat numbers in this document come from CrushClone,
+whose own README calls it "a clean-room recreation of the concept". They are
+plausible design targets, not measurements of the original.
+
+CrushJoints keeps CrushClone's topology (peak detector across channels,
+one-pole attack/release, soft-knee gain computer; attack 10→1 ms, release
+150→50 ms) but fixes two problems in CrushClone's version:
+
+- **Makeup gain** is derived from the static curve instead of being a fixed
+  `Amount × 12 dB`. The old version acted as a plain +3 dB gain at Amount 25%
+  (no compression yet) and removed up to 13 dB from loud, already-distorted
+  signals.
+- **Phat** is a separate parallel leg (see below) instead of a crossfade
+  against the dry signal.
 
 ### Phat mode
 
 - Parallel compression plus a low-shelf boost.
-- The dry signal is blended with a heavily compressed, low-shelf-boosted copy.
 - Low shelf: about 120 Hz, +8 dB (per CrushClone analysis).
 - The blend/fatness increases with Amount.
+- CrushJoints: the input is low-shelf boosted **before** a fixed heavy
+  compressor (-18 dB, 6:1, 5 ms / 100 ms), so the bass drives the detector and
+  comes out dense and sustained. Its output is crossfaded against the main
+  compressor (30% → 50% with Amount). CrushClone applied the shelf *after* the
+  compressor and crossfaded against the raw input, which made Phat quieter and
+  less bassy as Amount rose.
 - Can crackle at high levels on clean signals; the manual recommends turning it
   off for clean guitar.
 - Almost always left on for 808s and basses.
@@ -298,8 +316,11 @@ These are not in the current bank.
 - One-knob soft-knee compressor with auto gain.
 - Threshold 0 → -30 dB, ratio 1:1 → 8:1, knee ≈ 6 dB.
 - Attack 1–10 ms, release 50–150 ms, both faster at higher Amount.
-- Makeup gain up to +12 dB.
-- Phat: parallel compression + 120 Hz low shelf (+8 dB).
+- Makeup gain: restores the loss of the static curve at a -6 dBFS peak,
+  capped at +12 dB.
+- Phat: pre-compressor 120 Hz low shelf (+8 dB) into a fixed heavy parallel
+  leg.
+- `Amount` and Phat changes are smoothed over 20 ms.
 
 ### Master
 
@@ -330,9 +351,11 @@ Milestone 1:
   101-entry tables in `Source/Common/CamelCrusherCoeffs.cpp` are copied from
   that file. `Tests/DSPTests.cpp` compares `Distortion + Master` against a
   literal transcription of reverse-camel's `run()` loop.
-- **Filter and compressor** behaviour follows CrushClone's MIT-licensed
-  implementation (SVF low-pass with Q 0.7071–4.2071; peak-envelope soft-knee
-  compressor; parallel Phat path with a 120 Hz low shelf).
+- **Filter** behaviour follows CrushClone's MIT-licensed implementation (SVF
+  low-pass with Q 0.7071–4.2071).
+- **Compressor** curve numbers follow CrushClone, but they are unverified
+  against the original (see section 5). Makeup gain and the Phat topology were
+  re-designed in CrushJoints after measuring CrushClone's behaviour.
 - **Presets** were checked against CrushClone's `initPresets()`. The
   `Telephone` flags were corrected (filter on, compressor off).
 - **Oversampling:** the claim that the original does not oversample was not

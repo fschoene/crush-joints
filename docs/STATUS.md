@@ -89,9 +89,11 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
     cutoff ≥ 18 kHz with resonance < 0.05.
   - **Compressor:** peak detector across channels, one-pole attack/release
     (10→1 ms and 150→50 ms with Amount), soft-knee gain computer (0→-30 dB
-    threshold, 1:1→8:1 ratio), auto makeup up to +12 dB. Phat blends the dry
-    signal with a compressed, 120 Hz low-shelved copy with a blend increasing
-    from 0.2 to 0.65. Phat is audible at Amount 0 as long as Compressor is on.
+    threshold, 1:1→8:1 ratio), auto makeup derived from the static curve at
+    -6 dBFS (max +12 dB). Amount and Phat are smoothed over 20 ms. Phat adds a
+    parallel leg: 120 Hz +8 dB low shelf into a fixed heavy compressor
+    (-18 dB, 6:1), crossfaded 30%→50% with Amount. Phat is audible at Amount 0
+    as long as Compressor is on.
   - **Master:** optional dry/wet blend against a pre-effects copy, output
     volume, full bypass when `master_on` is false, hard limiting at ±2.0 and
     NaN/Inf sanitation.
@@ -107,7 +109,9 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
    reverse-camel's `run()` loop at several Tube/Mech/mix/volume settings.
 4. Distortion transparency at amount 0 and bypass at `tube_on = false`.
 5. 10 kHz attenuation through a 1 kHz low-pass, plus filter bypass.
-6. Compressor gain reduction, finite output and bypass.
+6. Compressor gain reduction, finite output and bypass; level behaviour
+   (transparent at Amount 0, makeup follows the curve) and Phat (bass tilt of
+   +3…5 dB on a bass+treble mix, click-free automation).
 7. Master volume boost, ±2.0 limiting, full bypass and dry/wet mix.
 8. The 12-preset bank, including the corrected Telephone flags.
 9. Custom preset save/overwrite/rename/delete and XML round-trip through a
@@ -156,8 +160,12 @@ Ordered roughly by impact.
    -24..+12 dB (CrushClone's range, required by presets such as MAS Loudener at
    +2 dB) instead of the original -51..0 dB.
 6. **Filter and compressor are reference-inspired, not measured clones.** The
-   SVF topology, Q range, compressor curve and Phat shelf come from CrushClone
-   rather than black-box measurement of the original.
+   SVF topology, Q range, compressor curve and Phat shelf numbers come from
+   CrushClone rather than black-box measurement of the original; no public
+   source documents the original's compressor algorithm. The makeup-gain rule
+   and the Phat topology (2026-10-26) are CrushJoints' own design. They are
+   unverified in a DAW and the constants live at the top of
+   `Source/DSP/Compressor.cpp` for tuning.
 7. **Format coverage is narrower than old docs claimed.** Only VST3, AU and
    Standalone are built; there is no CLAP, LV2 or AAX target.
 8. **No CI and no LICENSE file.** The README claims GPLv3, but the repository
