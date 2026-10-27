@@ -33,7 +33,9 @@ crush-joints/
 │   ├── RESEARCH.md
 │   ├── ARCHITECTURE.md
 │   ├── STATUS.md
-│   └── ROADMAP.md
+│   ├── ROADMAP.md
+│   ├── VERSION_1.md
+│   └── VERSION_2.md
 └── Source/
     ├── PluginProcessor.h/.cpp      # APVTS, presets, signal chain, plugin entry
     ├── PluginEditor.h/.cpp         # native JUCE editor

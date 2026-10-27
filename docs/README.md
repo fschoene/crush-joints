@@ -11,7 +11,9 @@ short and links here.
 | [RESEARCH.md](RESEARCH.md) | Background on CamelCrusher, the original DSP, UI and presets |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Framework decision, project layout, parameters, build and GUI architecture |
 | [STATUS.md](STATUS.md) | What actually works today, verified build results and known gaps |
-| [ROADMAP.md](ROADMAP.md) | Prioritised remaining work, validation plan and future ideas |
+| [ROADMAP.md](ROADMAP.md) | Version navigation, current focus and the unscheduled idea backlog |
+| [VERSION_1.md](VERSION_1.md) | Finished clone scope plus the open v1 validation/release work |
+| [VERSION_2.md](VERSION_2.md) | Planned GUI and workflow upgrades moved out of the v1 scope |
 
 ## Current snapshot
 
@@ -29,6 +31,9 @@ short and links here.
   modules). Output meter, MIDI Learn and right-click knob modes are still
   missing.
 - **Validation:** `pluginval`, `auval` and DAW testing have not been run yet.
+  This is the remaining Version 1 work; see [VERSION_1.md](VERSION_1.md).
+- **Version 2:** planned GUI/workflow upgrades. See
+  [VERSION_2.md](VERSION_2.md).
 
 See [STATUS.md](STATUS.md) for the detailed breakdown.
 

@@ -1,8 +1,44 @@
 # Roadmap
 
-Prioritised work remaining for CrushJoints, plus the longer-term idea backlog.
-The current state is documented in [STATUS.md](STATUS.md); the intended
-behaviour is in [RESEARCH.md](RESEARCH.md).
+This file is the navigation layer for CrushJoints development. Detailed
+version plans live in [VERSION_1.md](VERSION_1.md) and
+[VERSION_2.md](VERSION_2.md); current implementation status is in
+[STATUS.md](STATUS.md) and the reference behaviour is in
+[RESEARCH.md](RESEARCH.md).
+
+## Versions
+
+| Version | Status | Summary | Details |
+|---------|--------|---------|---------|
+| **Version 1** | Feature-complete; release validation pending | Faithful CamelCrusher clone plus the workflow features needed to use it: full DSP chain, factory/user presets, A/B and a modern resizable editor | [VERSION_1.md](VERSION_1.md) |
+| **Version 2** | Planned, not started | Remaining GUI/workflow work: output meter, knob modes/MIDI Learn, accessibility, styling and smarter Randomize | [VERSION_2.md](VERSION_2.md) |
+
+### Version 1 at a glance
+
+- Tube + Mech distortion using the reverse-camel coefficient tables.
+- 24 dB/oct SVF low-pass filter with resonance.
+- One-knob compressor with Phat parallel path.
+- Master volume, mix, safety limiter and full bypass.
+- 12 factory presets plus saveable user presets.
+- A/B comparison with copy-between-slots.
+- Resizable dark blue/yellow editor with labels, locks, readout and
+  double-click reset.
+- **Open:** Milestone 4 host validation and release work.
+
+### Version 2 at a glance
+
+- Output level meter / clipping indicator.
+- Right-click knob menu with Linear/Circular drag and MIDI Learn.
+- Keyboard navigation and accessibility labels.
+- Pixel-exact or otherwise finalised visual styling.
+- Optional "intelligent" Randomize constraints.
+
+## Current focus
+
+1. Finish Version 1: complete Milestone 4 validation and release work.
+2. Then start Version 2 from its initial scope.
+3. Promote backlog items into a version plan only when they are deliberately
+   scheduled.
 
 ## Guiding principles
 
@@ -16,93 +52,11 @@ behaviour is in [RESEARCH.md](RESEARCH.md).
    original (for example the -24..+12 dB master range), record it in the code
    and here.
 
-## Milestone 1 — Real DSP (completed 2026-10-25)
-
-All four DSP blocks are implemented and verified by offline tests.
-
-- [x] Import the reference 101-entry Tube and Mech coefficient tables from
-      reverse-camel; store them in `Common/CamelCrusherCoeffs.cpp`.
-- [x] Implement Tube followed by Mech in series, with interpolation between
-      table entries.
-- [x] Implement the SVF low-pass filter with Q 0.7071–4.2071 and wide-open
-      bypass.
-- [x] Implement the one-knob soft-knee compressor, auto makeup and Phat
-      parallel path.
-- [x] Implement Master volume, dry/wet, full bypass, ±2.0 safety limiter and
-      NaN/Inf sanitation.
-- [x] Add `Tests/DSPTests.cpp`, including a literal transcription of
-      reverse-camel's `run()` loop for end-to-end comparison.
-- [x] Correct the Telephone preset flags (filter on, compressor off).
-- [x] Verify a clean, warning-free build and passing tests.
-
-Decision: **no oversampling in v1.** It matches reverse-camel, avoids latency
-in the dry/wet path, and preserves the original's aliasing character. The
-`Oversampler` wrapper remains available for a future optional quality mode.
-
-Residual work from this milestone is tracked under Milestone 4 (host
-validation, CPU testing, optional oversampling).
-
-## Milestone 2 — State, presets and automation (completed 2026-10-25)
-
-- [x] Return the real current program from `getCurrentProgram()`.
-- [x] Store/restore the program index as part of the plugin state.
-- [x] Implement `changeProgramName()` for user presets.
-- [x] Synchronise the editor's preset box with host-driven program changes via
-      a change broadcaster.
-- [x] Persist A/B slots and the active slot in the plugin state.
-- [x] Implement processor-level A/B comparison with edit capture, slot
-      switching and copy-active-to-inactive.
-- [x] Add user preset save/overwrite/delete backed by an XML bank in the user
-      application data directory (rename is available through the host API).
-- [x] Add editor controls for A/B, copy, save and delete.
-- [x] Add processor tests for A/B, programs and state.
-- [x] Add preset persistence tests using a temporary bank file.
-
-Still to verify under a real host: automation of all 12 parameters, preset
-recall and A/B switching while recording automation. This is tracked in
-Milestone 4.
-
-## Milestone 3 — GUI completion (in progress)
-
-Completed:
-
-- [x] Value readout showing the preset name, then the dragged parameter value.
-- [x] CamelCrusher-inspired dark blue + yellow theme with high-contrast knobs,
-      arcs and switches.
-- [x] Visible labels for every parameter knob.
-- [x] Double-click reset to each parameter's default value.
-- [x] Per-parameter padlock buttons that exclude a value from Randomize.
-- [x] Randomize now skips on/off and Phat switches and respects locks.
-- [x] Lock flags persisted in plugin state.
-- [x] Resizable/scalable layout from 80% to 150% with a fixed aspect ratio.
-- [x] Module containers dim when bypassed; Master off dims all modules.
-- [x] Visual snapshots at multiple sizes via `CRUSHJOINTS_RENDER_UI=1`.
-
-Remaining:
-
-- [ ] Output level meter / clipping indicator fed by the processor.
-- [ ] Right-click knob menu with Linear/Circular drag and MIDI Learn.
-- [ ] Keyboard navigation and accessibility labels.
-- [ ] Pixel-exact CamelCrusher styling (the current theme is inspired, not a
-      reproduction).
-- [ ] Optional "intelligent" Randomize constraints to avoid extreme settings.
-
-## Milestone 4 — Validation and release (priority 3)
-
-- Extend the test harness (offline render comparison, fuzzing, CPU benchmarks).
-- Run `pluginval` at strictness 5+ on the VST3.
-- Run `auval` on the AU component.
-- Test in at least Reaper (VST3) and Logic Pro (AU); add Ableton if available.
-- Consider CI (GitHub Actions) for macOS build + pluginval; consider Windows VST3
-  and Linux VST3/LV2 later.
-- Verify state round-trip, automation and preset recall in each host.
-- Keep the clean build warning-free as new code lands.
-- Add a LICENSE file: the README claims GPLv3 but the repository currently has
-  no `LICENSE` file.
-
 ## Idea backlog
 
-Grouped from the earlier `IDEAS.md`; none of these are commitments.
+Unscheduled ideas. None of these are commitments. To schedule one, move it
+into [VERSION_1.md](VERSION_1.md) or [VERSION_2.md](VERSION_2.md) and add the
+appropriate acceptance criteria.
 
 ### GUI
 
@@ -146,9 +100,9 @@ Grouped from the earlier `IDEAS.md`; none of these are commitments.
   - UI: greyed volume knob, applied-gain readout, optional small level meter;
   - tests: deterministic static gain, silence/noise, stereo, limiter, bypass,
     automation and state restore.
-- Priority: after the remaining Milestone 3 GUI items and alongside Milestone 4
-  validation. Not a v1.0 blocker; the original CamelCrusher has no such
-  feature.
+- Priority: unscheduled. Revisit after Version 1 release work and the
+  initial Version 2 GUI scope. Not a v1.0 blocker; the original CamelCrusher
+  has no such feature.
 
 ### Workflow
 
@@ -180,13 +134,3 @@ Grouped from the earlier `IDEAS.md`; none of these are commitments.
 - SIMD paths for the waveshapers.
 - Memory-efficient preset handling.
 
-## Definition of done for v1.0
-
-- [x] All four DSP modules implemented and matched against references.
-- [x] No pass-through stubs left in the signal chain.
-- [x] A/B comparison and a persistent user preset bank implemented.
-- [x] Preset, program, A/B and state behaviour covered by offline tests.
-- [ ] Presets, state and host automation verified in at least two DAWs.
-- [ ] `pluginval` strictness 5+ and `auval` pass.
-- [x] VST3, AU and Standalone artefacts built from a clean checkout.
-- [ ] README, docs and LICENSE consistent with the implementation.
