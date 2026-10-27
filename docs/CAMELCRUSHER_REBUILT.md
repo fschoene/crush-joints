@@ -127,9 +127,9 @@ Notes and caveats:
 ## 5. What is useful for Version 1
 
 1. **Original 20 factory presets** — adopted in v1 (Milestone 4a). The 20
-   original presets now sit alongside the 12 CrushClone presets in the
-   Legacy/Original category, with provisional cutoff/volume mappings. The raw
-   values are above.
+   original presets now sit in the Legacy/Original category alongside the
+   Default preset and 11 grouped CrushClone presets, with provisional
+   cutoff/volume mappings. The raw values are above.
 2. **Mono input support.** The original VST2 is `CanMono` and supports
    mono-in/stereo-out. Our `isBusesLayoutSupported` currently requires stereo
    in and stereo out. This is scheduled as Milestone 4b in

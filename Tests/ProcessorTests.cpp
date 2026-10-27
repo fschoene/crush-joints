@@ -421,8 +421,10 @@ namespace
 
             check(processor.getNumFactoryPresets() == 32, "32 factory presets exposed");
             check(! processor.isUserPreset(0), "factory preset is not user-owned");
-            check(processor.getPresetCategory(0) == CrushJoints::PresetCategory::crushClone,
-                  "Default is in the CrushClone category");
+            check(processor.getPresetCategory(0) == CrushJoints::PresetCategory::defaultPreset,
+                  "Default is outside the categories");
+            check(processor.getPresetCategory(1) == CrushJoints::PresetCategory::crushClone,
+                  "DRM BigBadBeat is in the CrushClone category");
             check(processor.getPresetCategory(12) == CrushJoints::PresetCategory::legacy,
                   "Annihilate is in the legacy category");
 

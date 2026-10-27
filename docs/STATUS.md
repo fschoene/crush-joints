@@ -45,7 +45,7 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 | Compressor DSP | ✅ implemented | peak envelope, soft knee, auto makeup, Phat parallel path |
 | Master DSP | ✅ implemented | dry/wet, volume, full bypass, ±2.0 limiter, NaN/Inf cleanup |
 | Oversampling | ⚠️ not in path | deliberate: matches reverse-camel, keeps dry/wet latency-free |
-| Factory presets | ✅ working | 20 original Legacy/Original + 12 CrushClone presets, grouped in the selector |
+| Factory presets | ✅ working | Default at the top outside the groups; 20 Legacy/Original + 11 CrushClone presets in groups |
 | User presets | ✅ working | User category, empty until saved; save, overwrite, delete in the editor; rename via host API; XML in user app data |
 | Program API | ✅ working | real current program, host program names and renames |
 | A/B comparison | ✅ working | processor-level snapshots; A/B and copy in the editor |
@@ -66,9 +66,9 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 - Randomize only changes continuous parameters; it skips every on/off switch
   and leaves locked parameters untouched. The readout shows the current preset
   name, or the dragged knob's value while adjusting.
-- The preset selector is grouped into **Legacy / Original**, **CrushClone**
-  and **User**. The first two contain 20 and 12 presets respectively; User
-  stays empty until a preset is saved.
+- The preset selector starts with **Default** outside the groups, then
+  **Legacy / Original** (20), **CrushClone** (11) and **User** (empty until a
+  preset is saved).
 - Selecting a factory or user preset writes all 12 parameter values.
 - `Save...` captures the current settings as a user preset in
   `~/Library/Application Support/CrushJoints/Presets.xml` on macOS. Saving a
@@ -116,9 +116,9 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
    (transparent at Amount 0, makeup follows the curve) and Phat (bass tilt of
    +3…5 dB on a bass+treble mix, click-free automation).
 7. Master volume boost, ±2.0 limiting, full bypass and dry/wet mix.
-8. The 32-preset factory bank (20 legacy + 12 CrushClone), including the
-   corrected Telephone flags, category assignment, legacy value conversion and
-   the 100%-wet American Crunch override.
+8. The 32-preset factory bank (Default + 20 legacy + 11 grouped CrushClone),
+   including the corrected Telephone flags, category assignment, legacy value
+   conversion and the 100%-wet American Crunch override.
 9. Custom preset save/overwrite/rename/delete and XML round-trip through a
    temporary file, including User-category assignment.
 
@@ -130,7 +130,7 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 4. Plugin state round-trip including `currentProgram`, the active A/B slot,
    both snapshots and the lock flags.
 5. Custom preset save/delete through the processor and factory/user program metadata.
-6. Legacy preset application and category counts (20 legacy, 12 CrushClone).
+6. Legacy preset application and category counts (20 legacy, 11 grouped CrushClone; Default separate).
 7. Locked parameters staying fixed during Randomize and module switches never
    being randomised.
 8. Filter resonance boosting a tone at the cutoff and compressor amount/Phat
@@ -182,8 +182,8 @@ Ordered roughly by impact.
 10. **Original preset conversion is provisional.** Cutoff uses a 20 Hz–20 kHz
     exponential map and volume uses the reverse-camel stepped dB table. The
     exact original curves are not measured; verify before release.
-11. **Program indices changed with Milestone 4a.** CrushClone is now 0–11,
-    Legacy/Original 12–31 and User starts at 32. States saved before this
+11. **Program indices changed with Milestone 4a.** Default is 0, CrushClone
+    1–11, Legacy/Original 12–31 and User starts at 32. States saved before this
     change keep their parameter values but may display a different current
     program name.
 12. **No mono/stereo bus support yet.** Mono-in/stereo-out and mono-in/mono-out

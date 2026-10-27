@@ -10,7 +10,7 @@ plugin, featuring:
 - 24dB/octave low-pass filter with resonance
 - One-knob compressor with Phat mode
 - Master volume and mix controls
-- 20 original presets plus 12 CrushClone presets, grouped into Legacy/Original, CrushClone and User categories
+- Default preset at the top, plus 20 original and 11 CrushClone presets grouped into Legacy/Original, CrushClone and User categories
 - Saveable user presets in a separate User group
 - A/B parameter comparison with copy-between-slots
 - Per-parameter randomize locks with double-click reset

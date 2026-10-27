@@ -19,8 +19,9 @@ version plans live in [VERSION_1.md](VERSION_1.md) and
 - 24 dB/oct SVF low-pass filter with resonance.
 - One-knob compressor with Phat parallel path.
 - Master volume, mix, safety limiter and full bypass.
-- Original 20-program factory bank plus the 12 CrushClone presets, organized
-  into Legacy/Original, CrushClone and User groups.
+- Default preset at the top outside the groups, plus the original 20-program
+  factory bank and 11 CrushClone presets organized into Legacy/Original,
+  CrushClone and User groups.
 - Saveable user presets; the User group starts empty.
 - Native mono/stereo bus support for mono tracks (pending).
 - A/B comparison with copy-between-slots.

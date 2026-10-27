@@ -23,8 +23,9 @@ short and links here.
 - **DSP:** all four modules implemented (Tube/Mech tables, SVF low-pass,
   one-knob compressor + Phat, master limiter). Offline DSP and processor tests
   pass, including a comparison against the reverse-camel reference path.
-- **Presets/state:** 20 original Legacy/Original presets plus 12 CrushClone
-  presets, grouped with a User category; disk-backed user presets (save,
+- **Presets/state:** Default at the top outside the groups, plus 20 original
+  Legacy/Original and 11 CrushClone presets grouped with a User category;
+  disk-backed user presets (save,
   overwrite, delete in the editor), real program API, A/B snapshots and full
   state persistence.
 - **GUI:** interactive and resizable, with labelled knobs, a dark blue/yellow

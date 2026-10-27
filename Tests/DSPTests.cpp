@@ -631,11 +631,13 @@ namespace
             check(presets.getNumFactoryPresets() == 32, "32 factory presets reported");
             check(presets.getNumUserPresets() == 0, "no user presets initially");
             check(presets.getNumLegacyPresets() == 20, "20 legacy presets");
-            check(presets.getNumCrushClonePresets() == 12, "12 CrushClone presets");
+            check(presets.getNumCrushClonePresets() == 11, "11 grouped CrushClone presets");
 
             check(presets.getPreset(0).name == "Default", "first preset is Default");
-            check(presets.getPreset(0).category == CrushJoints::PresetCategory::crushClone,
-                  "Default is a CrushClone preset");
+            check(presets.getPreset(0).category == CrushJoints::PresetCategory::defaultPreset,
+                  "Default is outside the categories");
+            check(presets.getPreset(1).category == CrushJoints::PresetCategory::crushClone,
+                  "DRM BigBadBeat is a CrushClone preset");
             check(presets.getPreset(11).name == "Destroy Everything", "last CrushClone preset");
             check(presets.getPreset(11).category == CrushJoints::PresetCategory::crushClone,
                   "Destroy Everything is a CrushClone preset");

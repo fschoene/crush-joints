@@ -7,6 +7,7 @@ namespace CrushJoints
 {
     enum class PresetCategory
     {
+        defaultPreset,
         legacy,
         crushClone,
         user
@@ -31,13 +32,13 @@ namespace CrushJoints
     };
 
     /**
-        Preset bank: 12 CrushClone presets, 20 original Legacy/Original presets
-        and user presets loaded from an XML file in the user application data
-        directory.
+        Preset bank: the Default preset, 11 CrushClone presets, 20 original
+        Legacy/Original presets and user presets loaded from an XML file in the
+        user application data directory.
 
         User presets are stored outside the plugin binary so they survive
-        rebuilds. Program indices are CrushClone (0-11), Legacy/Original
-        (12-31), then user presets in the order they were added.
+        rebuilds. Program indices are Default (0), CrushClone (1-11),
+        Legacy/Original (12-31), then user presets in the order they were added.
     */
     class Presets
     {

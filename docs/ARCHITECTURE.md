@@ -178,16 +178,17 @@ Notes:
 
 ### Factory and user presets
 
-- `Common/Presets.cpp` defines 32 factory patches: 12 CrushClone presets and
-  20 original Legacy/Original presets.
+- `Common/Presets.cpp` defines 32 factory patches: the Default preset, 11
+  CrushClone presets and 20 original Legacy/Original presets.
 - User presets are stored as XML in
   `~/Library/Application Support/CrushJoints/Presets.xml` on macOS
   (`userApplicationDataDirectory` is used so the same code works on other
   platforms).
-- Program indices are: CrushClone `0–11`, Legacy/Original `12–31`, then user
-  presets from `32` in insertion order. `getNumPrograms()` returns the combined
-  count. The editor displays the groups as Legacy/Original, CrushClone and
-  User, mapping selected combo IDs back to these program indices.
+- Program indices are: Default `0`, CrushClone `1–11`, Legacy/Original
+  `12–31`, then user presets from `32` in insertion order. `getNumPrograms()`
+  returns the combined count. The editor places Default at the top outside the
+  groups, then displays Legacy/Original, CrushClone and User, mapping selected
+  combo IDs back to these program indices.
 - `saveUserPreset(name)` captures the current 12 parameter values and appends
   or overwrites a user preset with the same name (case-insensitive). It
   returns the combined program index or -1. The editor exposes save and
@@ -196,9 +197,10 @@ Notes:
   program falls back to the previous program and loads it.
 - `renameUserPreset` is used by the host-facing `changeProgramName`; factory
   presets cannot be renamed or deleted.
-- The editor uses grouped preset-selector headings: **Legacy / Original**,
-  **CrushClone** and **User**. The User group shows a "none saved yet" heading
-  until a user preset exists. Saving and deleting live in the preset bar.
+- The editor places **Default** at the top, then uses grouped preset-selector
+  headings: **Legacy / Original**, **CrushClone** and **User**. The User group
+  shows a "none saved yet" heading until a user preset exists. Saving and
+  deleting live in the preset bar.
 
 ### Program API
 
@@ -309,7 +311,7 @@ verifies:
   automation),
 - master volume, limiter, bypass and dry/wet mix,
 - the preset bank, including the Telephone flags,
-- the 32-preset factory bank and its category assignment,
+- the 32-preset factory bank, Default placement and category assignment,
 - original-preset conversion, including the 100%-wet American Crunch override,
 - custom preset save/overwrite/rename/delete and XML round-trip through a
   temporary file.

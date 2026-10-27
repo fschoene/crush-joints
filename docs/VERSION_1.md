@@ -9,9 +9,10 @@ made it practical to use and test:
 
 - the full signal chain (Tube/Mech distortion, SVF filter, custom one-knob
   compressor with Phat, master section),
-- the original 20-program CamelCrusher factory bank plus the current 12
-  CrushClone presets, organized into **Legacy / Original**, **CrushClone** and
-  **User** groups (Milestone 4a, completed),
+- the Default preset at the top outside the groups, plus the original
+  20-program CamelCrusher factory bank and 11 CrushClone presets organized into
+  **Legacy / Original**, **CrushClone** and **User** groups (Milestone 4a,
+  completed),
 - disk-backed user presets (the User group starts empty),
 - native mono/stereo bus support for mono tracks (Milestone 4b, pending),
 - A/B comparison with copy-between-slots,
@@ -99,10 +100,11 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
       [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md).
 - [x] Map legacy normalized cutoff and master-volume values to our parameter
       ranges; keep tube/mech/res/amount/mix and switch values direct.
-- [x] Keep the current 12 CrushClone presets as a separate group.
+- [x] Keep the current 11 CrushClone presets as a separate group, with Default
+      outside the groups at the top of the selector.
 - [x] Group presets in the selector as:
       **Legacy / Original** (provisional label; UI copy can be renamed),
-      **CrushClone** (the current 12 presets),
+      **CrushClone** (the current 11 grouped presets),
       **User** (empty until the user saves a preset).
 - [x] Ensure saving a user preset adds it to the User group; deleting removes
       it.
@@ -112,8 +114,9 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
       The legacy chunk stores 0; this deviation is recorded in code.
 - [x] Tests:
       all 20 original presets load with expected converted values,
-      the three groups have the expected contents and User starts empty,
-      user save/delete and host program names still work.
+      Default sits outside the groups and the other groups have the expected
+      contents, User starts empty, and user save/delete and host program names
+      still work.
 - [x] Document the chosen cutoff and volume mappings as provisional estimates.
 
 ## Milestone 4b — Mono/stereo bus compatibility (v1 scope, pending)

@@ -89,7 +89,8 @@ namespace CrushJoints
             true,               // compOn
             0.0f,               // volume
             1.0f,               // mix
-            true                // masterOn
+            true,               // masterOn
+            PresetCategory::defaultPreset // category
         });
         
         factoryPresets.push_back({

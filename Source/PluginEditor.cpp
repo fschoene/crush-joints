@@ -519,6 +519,16 @@ void CrushJointsAudioProcessorEditor::updateFromProcessor()
                 presetBox.addItem(processorRef.getProgramName(i), i + 1);
     };
 
+    // Default sits outside the groups, at the top of the selector.
+    for (int i = 0; i < numPresets; ++i)
+    {
+        if (processorRef.getPresetCategory(i) == CrushJoints::PresetCategory::defaultPreset)
+        {
+            presetBox.addItem(processorRef.getProgramName(i), i + 1);
+            break;
+        }
+    }
+
     addCategory(CrushJoints::PresetCategory::legacy, "Legacy / Original");
     addCategory(CrushJoints::PresetCategory::crushClone, "CrushClone");
 
