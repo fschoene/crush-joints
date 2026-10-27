@@ -5,6 +5,13 @@
 
 namespace CrushJoints
 {
+    enum class PresetCategory
+    {
+        legacy,
+        crushClone,
+        user
+    };
+
     struct Preset
     {
         juce::String name;
@@ -20,16 +27,17 @@ namespace CrushJoints
         float volume = 0.0f;
         float mix = 1.0f;
         bool masterOn = true;
-        bool isUser = false;
+        PresetCategory category = PresetCategory::crushClone;
     };
 
     /**
-        Preset bank: the 12 factory patches plus user patches loaded from an
-        XML file in the user application data directory.
+        Preset bank: 12 CrushClone presets, 20 original Legacy/Original presets
+        and user presets loaded from an XML file in the user application data
+        directory.
 
         User presets are stored outside the plugin binary so they survive
-        rebuilds. Program indices are factory presets first, then user presets
-        in the order they were added.
+        rebuilds. Program indices are CrushClone (0-11), Legacy/Original
+        (12-31), then user presets in the order they were added.
     */
     class Presets
     {
@@ -41,8 +49,11 @@ namespace CrushJoints
         int getNumPresets() const;
         int getNumFactoryPresets() const;
         int getNumUserPresets() const;
+        int getNumLegacyPresets() const;
+        int getNumCrushClonePresets() const;
 
         Preset getPreset(int index) const;
+        PresetCategory getPresetCategory(int index) const;
 
         bool isUserPreset(int index) const;
         bool isFactoryPreset(int index) const;
@@ -63,6 +74,7 @@ namespace CrushJoints
 
     private:
         void createFactoryPresets();
+        void createLegacyPresets();
         void loadUserPresets();
         bool writeUserPresets(const std::vector<Preset>& presetsToWrite) const;
 

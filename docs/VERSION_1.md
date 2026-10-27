@@ -1,7 +1,6 @@
 # Version 1 — Faithful CamelCrusher clone + modern workflow
 
-> **Status:** the v1 core is feature-complete; the original factory-bank and
-> preset-category expansion (Milestone 4a), mono/stereo bus compatibility
+> **Status:** the v1 core is feature-complete; mono/stereo bus compatibility
 > (Milestone 4b) and the Milestone 4 release work are still open. Back to the
 > [roadmap](ROADMAP.md).
 
@@ -12,7 +11,7 @@ made it practical to use and test:
   compressor with Phat, master section),
 - the original 20-program CamelCrusher factory bank plus the current 12
   CrushClone presets, organized into **Legacy / Original**, **CrushClone** and
-  **User** groups (Milestone 4a, pending),
+  **User** groups (Milestone 4a, completed),
 - disk-backed user presets (the User group starts empty),
 - native mono/stereo bus support for mono tracks (Milestone 4b, pending),
 - A/B comparison with copy-between-slots,
@@ -25,8 +24,8 @@ Anything that is not required to call this a faithful, usable CamelCrusher
 clone is deferred. The remaining Milestone 3 GUI work now lives in
 [Version 2](VERSION_2.md); unscheduled ideas stay in the
 [roadmap backlog](ROADMAP.md#idea-backlog). The original factory bank and
-preset categories (Milestone 4a) and mono/stereo bus compatibility (Milestone
-4b) are the intentionally added v1 scope items.
+preset categories (Milestone 4a) are implemented; mono/stereo bus compatibility
+(Milestone 4b) remains the other intentionally added v1 scope item.
 
 ## Milestone 1 — Real DSP (completed 2026-10-25)
 
@@ -92,33 +91,30 @@ Completed:
 
 The remaining GUI work was moved to [Version 2](VERSION_2.md).
 
-## Milestone 4a — Original preset bank and categories (v1 scope, pending)
+## Milestone 4a — Original preset bank and categories (v1 scope, completed)
 
-**Status:** not started.
+**Status:** completed.
 
-Goal: make the preset bank authentic and easier to navigate before the v1
-release.
-
-- Add the original 20-program CamelCrusher factory bank decoded in
-  [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md).
-- Map legacy normalized cutoff and master-volume values to our parameter
-  ranges; keep tube/mech/res/amount/mix and switch values direct.
-- Keep the current 12 CrushClone presets as a separate group.
-- Group presets in the selector as:
-  - **Legacy / Original** (provisional label; UI copy can be renamed),
-  - **CrushClone** (the current 12 presets),
-  - **User** (empty until the user saves a preset).
-- Ensure saving a user preset adds it to the User group; deleting removes it.
-- Decide whether group headings are display-only or part of program indexing;
-  preserve existing program and state behaviour unless a migration is required.
-- **American Crunch:** use Mix = 100% wet as a deliberate manual correction.
-  The legacy chunk stores 0; record the deviation.
-- Tests:
-  - all 20 original presets load with expected converted values,
-  - the three groups have the expected contents and User starts empty,
-  - user save/delete and host program names still work.
-- Update the preset conversion notes in the research doc if the final cutoff or
-  volume mappings differ from the proposed values.
+- [x] Add the original 20-program CamelCrusher factory bank decoded in
+      [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md).
+- [x] Map legacy normalized cutoff and master-volume values to our parameter
+      ranges; keep tube/mech/res/amount/mix and switch values direct.
+- [x] Keep the current 12 CrushClone presets as a separate group.
+- [x] Group presets in the selector as:
+      **Legacy / Original** (provisional label; UI copy can be renamed),
+      **CrushClone** (the current 12 presets),
+      **User** (empty until the user saves a preset).
+- [x] Ensure saving a user preset adds it to the User group; deleting removes
+      it.
+- [x] Keep group headings display-only; program indices remain stable and
+      existing program/state behaviour is preserved.
+- [x] **American Crunch:** use Mix = 100% wet as a deliberate manual correction.
+      The legacy chunk stores 0; this deviation is recorded in code.
+- [x] Tests:
+      all 20 original presets load with expected converted values,
+      the three groups have the expected contents and User starts empty,
+      user save/delete and host program names still work.
+- [x] Document the chosen cutoff and volume mappings as provisional estimates.
 
 ## Milestone 4b — Mono/stereo bus compatibility (v1 scope, pending)
 
@@ -152,7 +148,7 @@ Goal: make mono tracks work without relying on host-side duplication.
 - Acceptance: a mono track works without host duplication, stereo results are
   unchanged, and the preset/category work is unaffected.
 
-## Milestone 4 — Validation and release (pending)
+## Milestone 5 — Validation and release (pending)
 
 **Status:** not started.
 
@@ -175,8 +171,8 @@ Goal: make mono tracks work without relying on host-side duplication.
 - [x] No pass-through stubs left in the signal chain.
 - [x] A/B comparison and a persistent user preset bank implemented.
 - [x] Preset, program, A/B and state behaviour covered by offline tests.
-- [ ] Original 20-program factory bank integrated and verified.
-- [ ] Preset groups Legacy/Original, CrushClone and User implemented.
+- [x] Original 20-program factory bank integrated and verified.
+- [x] Preset groups Legacy/Original, CrushClone and User implemented.
 - [ ] Mono/mono, stereo/stereo and mono/stereo bus layouts supported and tested.
 - [ ] Presets, state and host automation verified in at least two DAWs.
 - [ ] `pluginval` strictness 5+ and `auval` pass.

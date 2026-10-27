@@ -50,7 +50,7 @@ crush-joints/
     │   └── Master.h/.cpp           # volume, mix, limiter
     └── Common/
         ├── CamelCrusherCoeffs.h/.cpp  # reverse-camel coefficient tables
-        └── Presets.h/.cpp             # factory + user preset bank
+        └── Presets.h/.cpp             # CrushClone + legacy + user preset bank
 ```
 
 Tests live in `Tests/`:
@@ -178,13 +178,16 @@ Notes:
 
 ### Factory and user presets
 
-- `Common/Presets.cpp` defines 12 factory patches.
+- `Common/Presets.cpp` defines 32 factory patches: 12 CrushClone presets and
+  20 original Legacy/Original presets.
 - User presets are stored as XML in
   `~/Library/Application Support/CrushJoints/Presets.xml` on macOS
   (`userApplicationDataDirectory` is used so the same code works on other
   platforms).
-- Program indices are: factory presets first, then user presets in insertion
-  order. `getNumPrograms()` returns the combined count.
+- Program indices are: CrushClone `0–11`, Legacy/Original `12–31`, then user
+  presets from `32` in insertion order. `getNumPrograms()` returns the combined
+  count. The editor displays the groups as Legacy/Original, CrushClone and
+  User, mapping selected combo IDs back to these program indices.
 - `saveUserPreset(name)` captures the current 12 parameter values and appends
   or overwrites a user preset with the same name (case-insensitive). It
   returns the combined program index or -1. The editor exposes save and
@@ -193,8 +196,9 @@ Notes:
   program falls back to the previous program and loads it.
 - `renameUserPreset` is used by the host-facing `changeProgramName`; factory
   presets cannot be renamed or deleted.
-- The editor shows user presets with a `User: ` prefix so they cannot be
-  confused with factory names. Saving and deleting live in the preset bar.
+- The editor uses grouped preset-selector headings: **Legacy / Original**,
+  **CrushClone** and **User**. The User group shows a "none saved yet" heading
+  until a user preset exists. Saving and deleting live in the preset bar.
 
 ### Program API
 
@@ -202,8 +206,7 @@ Notes:
 - `setCurrentProgram(index)` applies the preset, updates the active A/B slot,
   calls `updateHostDisplay()` and broadcasts a change so the editor follows
   host-driven program changes.
-- `getProgramName(index)` returns the preset name (raw, without the editor's
-  `User: ` prefix).
+- `getProgramName(index)` returns the raw preset name.
 - `changeProgramName(index, newName)` renames user presets; factory presets are
   ignored.
 
@@ -262,7 +265,7 @@ Implemented versus reference GUI:
 |---------|--------|
 | Four module groups | implemented |
 | Knobs, labels and on/off toggles | implemented |
-| Preset dropdown | implemented, including host sync |
+| Preset dropdown | implemented with Legacy/Original, CrushClone and User groups and host sync |
 | Save/Delete user presets | implemented |
 | A/B comparison + copy | implemented |
 | Per-parameter randomize locks | implemented and persisted |
@@ -306,13 +309,16 @@ verifies:
   automation),
 - master volume, limiter, bypass and dry/wet mix,
 - the preset bank, including the Telephone flags,
+- the 32-preset factory bank and its category assignment,
+- original-preset conversion, including the 100%-wet American Crunch override,
 - custom preset save/overwrite/rename/delete and XML round-trip through a
   temporary file.
 
 `Tests/ProcessorTests.cpp` (`CrushJointsProcessorTests`) verifies:
 
 - A/B switching, edit capture, slot copying and restoration,
-- program changes and the real `getCurrentProgram()` value,
+- program changes and the real `getCurrentProgram()` value, including legacy
+  presets and category counts,
 - plugin state round-trip including `currentProgram`, both A/B slots and the
   lock flags,
 - user preset save/delete through the processor using a temporary bank file,

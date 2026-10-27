@@ -101,7 +101,7 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
         if (updatingPresetBox)
             return;
 
-        const auto index = presetBox.getSelectedItemIndex();
+        const auto index = presetBox.getSelectedId() - 1;
 
         if (index >= 0)
             processorRef.setCurrentProgram(index);
@@ -500,15 +500,38 @@ void CrushJointsAudioProcessorEditor::updateFromProcessor()
 
     const int numPresets = processorRef.getNumPrograms();
 
-    for (int i = 0; i < numPresets; ++i)
+    const auto addCategory = [this, numPresets](CrushJoints::PresetCategory category,
+                                                const juce::String& heading)
     {
-        auto name = processorRef.getProgramName(i);
+        int count = 0;
 
+        for (int i = 0; i < numPresets; ++i)
+            if (processorRef.getPresetCategory(i) == category)
+                ++count;
+
+        if (count == 0)
+            return;
+
+        presetBox.addSectionHeading(heading);
+
+        for (int i = 0; i < numPresets; ++i)
+            if (processorRef.getPresetCategory(i) == category)
+                presetBox.addItem(processorRef.getProgramName(i), i + 1);
+    };
+
+    addCategory(CrushJoints::PresetCategory::legacy, "Legacy / Original");
+    addCategory(CrushJoints::PresetCategory::crushClone, "CrushClone");
+
+    int userPresetCount = 0;
+
+    for (int i = 0; i < numPresets; ++i)
         if (processorRef.isUserPreset(i))
-            name = "User: " + name;
+            ++userPresetCount;
 
-        presetBox.addItem(name, i + 1);
-    }
+    if (userPresetCount == 0)
+        presetBox.addSectionHeading("User - none saved yet");
+    else
+        addCategory(CrushJoints::PresetCategory::user, "User");
 
     const int currentProgram = processorRef.getCurrentProgram();
     presetBox.setSelectedId(juce::jlimit(1, juce::jmax(1, numPresets), currentProgram + 1),

@@ -61,6 +61,7 @@ public:
 
     bool isUserPreset(int programIndex) const;
     int getNumFactoryPresets() const;
+    CrushJoints::PresetCategory getPresetCategory(int programIndex) const;
 
     //==============================================================================
     // A/B comparison

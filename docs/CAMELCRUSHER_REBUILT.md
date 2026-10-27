@@ -126,14 +126,14 @@ Notes and caveats:
 
 ## 5. What is useful for Version 1
 
-1. **Original 20 factory presets** — the highest-value v1 fidelity gap. Our
-   current bank is the 12 CrushClone presets, not the original bank. Adding the
-   original 20 (after resolving cutoff/volume mapping) would make the clone
-   materially more authentic. The raw values are above.
+1. **Original 20 factory presets** — adopted in v1 (Milestone 4a). The 20
+   original presets now sit alongside the 12 CrushClone presets in the
+   Legacy/Original category, with provisional cutoff/volume mappings. The raw
+   values are above.
 2. **Mono input support.** The original VST2 is `CanMono` and supports
    mono-in/stereo-out. Our `isBusesLayoutSupported` currently requires stereo
-   in and stereo out. If v1 validation includes mono tracks in Reaper/Logic,
-   this is a real host-compatibility gap.
+   in and stereo out. This is scheduled as Milestone 4b in
+   [VERSION_1.md](VERSION_1.md).
 3. **Host/editor validation lessons.** Their tests cover AU/VST3 editor view
    creation, bundle loading, mono/stereo routing, and `auvaltool` success.
    Useful additions for Milestone 4:
@@ -167,11 +167,9 @@ Notes and caveats:
 
 ## 7. Suggested next step
 
-Decide whether v1 should include the original 20-preset bank and mono/stereo
-bus support. Both are small compared with legacy session compatibility and
-directly improve clone fidelity/host coverage. If not, record them in the
-roadmap backlog and keep the legacy VST2 work as a v2/separate compatibility
-idea.
+The original 20-preset bank is implemented in v1 (Milestone 4a). Mono/stereo
+bus support is scheduled as Milestone 4b. Legacy VST2 session compatibility
+remains a separate v2/separate-tool idea.
 
 ## Sources
 

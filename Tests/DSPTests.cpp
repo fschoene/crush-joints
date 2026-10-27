@@ -627,41 +627,91 @@ namespace
             CrushJoints::Presets presets(tempFile);
             presets.initPresets();
 
-            check(presets.getNumPresets() == 12, "12 factory presets are available");
-            check(presets.getNumFactoryPresets() == 12, "12 factory presets reported");
+            check(presets.getNumPresets() == 32, "32 factory presets are available");
+            check(presets.getNumFactoryPresets() == 32, "32 factory presets reported");
             check(presets.getNumUserPresets() == 0, "no user presets initially");
+            check(presets.getNumLegacyPresets() == 20, "20 legacy presets");
+            check(presets.getNumCrushClonePresets() == 12, "12 CrushClone presets");
+
             check(presets.getPreset(0).name == "Default", "first preset is Default");
-            checkClose(presets.getPreset(11).tube, 1.0f, 0.0f, "Destroy Everything tube");
-            checkClose(presets.getPreset(11).mech, 1.0f, 0.0f, "Destroy Everything mech");
+            check(presets.getPreset(0).category == CrushJoints::PresetCategory::crushClone,
+                  "Default is a CrushClone preset");
+            check(presets.getPreset(11).name == "Destroy Everything", "last CrushClone preset");
+            check(presets.getPreset(11).category == CrushJoints::PresetCategory::crushClone,
+                  "Destroy Everything is a CrushClone preset");
+            check(presets.getPreset(12).name == "Annihilate", "first legacy preset");
+            check(presets.getPreset(12).category == CrushJoints::PresetCategory::legacy,
+                  "Annihilate is a legacy preset");
+            check(presets.getPreset(31).name == "Turn it to 11", "last legacy preset");
+            check(presets.getPreset(31).category == CrushJoints::PresetCategory::legacy,
+                  "Turn it to 11 is a legacy preset");
             check(! presets.isUserPreset(0), "factory preset is not a user preset");
 
-            const auto telephone = presets.getPreset(10);
-            check(telephone.name == "Telephone", "Telephone preset name");
-            check(telephone.lpfOn, "Telephone filter is on");
-            check(! telephone.compOn, "Telephone compressor is off");
+            const char* expectedLegacyNames[] = {
+                "Annihilate", "American Crunch", "American HiGain", "British Clean",
+                "British Crunch", "British HiGain", "Bass Maker", "Clean Rainbow",
+                "Tube Warmth", "Dark Crunch", "Destroyer", "Ultra Phat",
+                "Distort", "Dream", "More Beef", "Santana Row",
+                "Fuzz Filter", "Subtle Master", "YouWereWarned", "Turn it to 11"
+            };
+
+            for (int i = 0; i < 20; ++i)
+            {
+                const auto legacyPreset = presets.getPreset(12 + i);
+                check(legacyPreset.name == expectedLegacyNames[i],
+                      "legacy preset name " + juce::String(i));
+                check(legacyPreset.category == CrushJoints::PresetCategory::legacy,
+                      "legacy preset category " + juce::String(i));
+                check(legacyPreset.cutoff >= 20.0f && legacyPreset.cutoff <= 20000.0f,
+                      "legacy preset cutoff range " + juce::String(i));
+                check(legacyPreset.volume >= -24.0f && legacyPreset.volume <= 12.0f,
+                      "legacy preset volume range " + juce::String(i));
+            }
+
+            const auto annihilate = presets.getPreset(12);
+            checkClose(annihilate.tube, 0.34f, 1.0e-6f, "Annihilate tube");
+            checkClose(annihilate.mech, 0.0f, 1.0e-6f, "Annihilate mech");
+            check(! annihilate.lpfOn, "Annihilate filter is off");
+            check(annihilate.phat, "Annihilate Phat is on");
+            checkClose(annihilate.amount, 0.905f, 1.0e-6f, "Annihilate amount");
+
+            const auto americanCrunch = presets.getPreset(13);
+            check(americanCrunch.name == "American Crunch", "American Crunch name");
+            checkClose(americanCrunch.mix, 1.0f, 1.0e-6f, "American Crunch uses 100% wet");
+
+            const auto britishClean = presets.getPreset(15);
+            check(britishClean.name == "British Clean", "British Clean name");
+            checkClose(britishClean.cutoff, 20000.0f, 1.0e-3f, "British Clean open cutoff");
+            check(! britishClean.phat, "British Clean Phat is off");
+            checkClose(britishClean.mix, 0.615f, 1.0e-6f, "British Clean mix");
+
+            check(presets.getPreset(10).name == "Telephone", "Telephone preset name");
+            check(presets.getPreset(10).lpfOn, "Telephone filter is on");
+            check(! presets.getPreset(10).compOn, "Telephone compressor is off");
 
             auto custom = presets.getPreset(0);
             custom.name = "My Custom";
             custom.tube = 0.42f;
             custom.mech = 0.17f;
             custom.cutoff = 4321.0f;
-            custom.isUser = true;
 
             const int customIndex = presets.saveUserPreset(custom);
-            check(customIndex == 12, "custom preset is appended after factory presets");
-            check(presets.getNumPresets() == 13, "user preset increases program count");
+            check(customIndex == 32, "custom preset is appended after factory presets");
+            check(presets.getNumPresets() == 33, "user preset increases program count");
             check(presets.getNumUserPresets() == 1, "one user preset");
-            check(presets.isUserPreset(12), "new preset is a user preset");
-            check(presets.getPreset(12).name == "My Custom", "custom preset name");
-            checkClose(presets.getPreset(12).tube, 0.42f, 1.0e-6f, "custom preset tube");
-            checkClose(presets.getPreset(12).cutoff, 4321.0f, 1.0e-3f, "custom preset cutoff");
+            check(presets.isUserPreset(32), "new preset is a user preset");
+            check(presets.getPreset(32).category == CrushJoints::PresetCategory::user,
+                  "new preset has the user category");
+            check(presets.getPreset(32).name == "My Custom", "custom preset name");
+            checkClose(presets.getPreset(32).tube, 0.42f, 1.0e-6f, "custom preset tube");
+            checkClose(presets.getPreset(32).cutoff, 4321.0f, 1.0e-3f, "custom preset cutoff");
 
             custom.mech = 0.9f;
-            check(presets.saveUserPreset(custom) == 12, "saving the same name overwrites");
-            checkClose(presets.getPreset(12).mech, 0.9f, 1.0e-6f, "overwritten mech value");
+            check(presets.saveUserPreset(custom) == 32, "saving the same name overwrites");
+            checkClose(presets.getPreset(32).mech, 0.9f, 1.0e-6f, "overwritten mech value");
 
-            check(presets.renameUserPreset(12, "Renamed"), "user preset can be renamed");
-            check(presets.getPreset(12).name == "Renamed", "renamed preset name");
+            check(presets.renameUserPreset(32, "Renamed"), "user preset can be renamed");
+            check(presets.getPreset(32).name == "Renamed", "renamed preset name");
 
             auto invalid = custom;
             invalid.name = "   ";
@@ -675,12 +725,15 @@ namespace
             CrushJoints::Presets reloaded(tempFile);
             reloaded.initPresets();
 
-            check(reloaded.getNumPresets() == 13, "user preset survives reload");
-            check(reloaded.isUserPreset(12), "reloaded preset is a user preset");
-            check(reloaded.getPreset(12).name == "Renamed", "reloaded preset name");
-            checkClose(reloaded.getPreset(12).mech, 0.9f, 1.0e-6f, "reloaded mech value");
-            check(reloaded.deleteUserPreset(12), "user preset can be deleted");
-            check(reloaded.getNumPresets() == 12, "deleting restores factory count");
+            check(reloaded.getNumPresets() == 33, "user preset survives reload");
+            check(reloaded.getNumFactoryPresets() == 32, "factory count survives reload");
+            check(reloaded.isUserPreset(32), "reloaded preset is a user preset");
+            check(reloaded.getPreset(32).category == CrushJoints::PresetCategory::user,
+                  "reloaded preset keeps the user category");
+            check(reloaded.getPreset(32).name == "Renamed", "reloaded preset name");
+            checkClose(reloaded.getPreset(32).mech, 0.9f, 1.0e-6f, "reloaded mech value");
+            check(reloaded.deleteUserPreset(32), "user preset can be deleted");
+            check(reloaded.getNumPresets() == 32, "deleting restores factory count");
         }
 
         tempFile.deleteFile();

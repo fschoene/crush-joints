@@ -303,6 +303,37 @@ namespace
         }
     }
 
+    void testLegacyPresets()
+    {
+        CrushJointsAudioProcessor processor;
+
+        check(processor.getNumFactoryPresets() == 32, "32 factory presets exposed");
+        check(processor.getPresetCategory(12) == CrushJoints::PresetCategory::legacy,
+              "Annihilate is legacy");
+        check(processor.getPresetCategory(31) == CrushJoints::PresetCategory::legacy,
+              "Turn it to 11 is legacy");
+
+        processor.setCurrentProgram(12); // Annihilate
+        check(processor.getCurrentProgram() == 12, "Annihilate program index");
+        check(processor.getProgramName(12) == "Annihilate", "Annihilate program name");
+        checkClose(getValue(processor, "tube"), 0.34f, 1.0e-4f, "Annihilate tube");
+        checkClose(getValue(processor, "mech"), 0.0f, 1.0e-4f, "Annihilate mech");
+        checkClose(getValue(processor, "lpf_on"), 0.0f, 0.0f, "Annihilate filter off");
+        checkClose(getValue(processor, "phat"), 1.0f, 0.0f, "Annihilate Phat on");
+        checkClose(getValue(processor, "amount"), 0.91f, 1.0e-4f, "Annihilate amount");
+
+        processor.setCurrentProgram(13); // American Crunch
+        checkClose(getValue(processor, "tube"), 1.0f, 1.0e-4f, "American Crunch tube");
+        checkClose(getValue(processor, "mech"), 0.28f, 1.0e-4f, "American Crunch mech");
+        checkClose(getValue(processor, "mix"), 1.0f, 1.0e-4f, "American Crunch 100% wet");
+
+        processor.setCurrentProgram(31); // Turn it to 11
+        check(processor.getProgramName(31) == "Turn it to 11", "Turn it to 11 name");
+        checkClose(getValue(processor, "tube"), 1.0f, 1.0e-4f, "Turn it to 11 tube");
+        checkClose(getValue(processor, "mech"), 1.0f, 1.0e-4f, "Turn it to 11 mech");
+        checkClose(getValue(processor, "phat"), 1.0f, 0.0f, "Turn it to 11 Phat on");
+    }
+
     void testParameterLocksAndRandomize()
     {
         CrushJointsAudioProcessor processor;
@@ -388,22 +419,28 @@ namespace
         {
             CrushJointsAudioProcessor processor(tempFile);
 
-            check(processor.getNumFactoryPresets() == 12, "12 factory presets exposed");
+            check(processor.getNumFactoryPresets() == 32, "32 factory presets exposed");
             check(! processor.isUserPreset(0), "factory preset is not user-owned");
+            check(processor.getPresetCategory(0) == CrushJoints::PresetCategory::crushClone,
+                  "Default is in the CrushClone category");
+            check(processor.getPresetCategory(12) == CrushJoints::PresetCategory::legacy,
+                  "Annihilate is in the legacy category");
 
             setValue(processor, "tube", 0.55f);
             setValue(processor, "cutoff", 2345.0f);
 
             const int index = processor.saveUserPreset("Processor Test");
-            check(index == 12, "processor saves a user preset at the end of the bank");
-            check(processor.getNumPrograms() == 13, "saved preset extends the program list");
-            check(processor.isUserPreset(12), "saved preset is user-owned");
-            check(processor.getCurrentProgram() == 12, "saved preset becomes current");
-            check(processor.getProgramName(12) == "Processor Test", "saved preset name");
+            check(index == 32, "processor saves a user preset at the end of the bank");
+            check(processor.getNumPrograms() == 33, "saved preset extends the program list");
+            check(processor.isUserPreset(32), "saved preset is user-owned");
+            check(processor.getPresetCategory(32) == CrushJoints::PresetCategory::user,
+                  "saved preset is in the user category");
+            check(processor.getCurrentProgram() == 32, "saved preset becomes current");
+            check(processor.getProgramName(32) == "Processor Test", "saved preset name");
 
-            check(processor.deleteUserPreset(12), "processor deletes a user preset");
-            check(processor.getNumPrograms() == 12, "delete restores the factory count");
-            check(processor.getCurrentProgram() == 11, "delete falls back to the previous program");
+            check(processor.deleteUserPreset(32), "processor deletes a user preset");
+            check(processor.getNumPrograms() == 32, "delete restores the factory count");
+            check(processor.getCurrentProgram() == 31, "delete falls back to the previous program");
         }
 
         tempFile.deleteFile();
@@ -411,7 +448,7 @@ namespace
         // A processor created with the same file should not see the deleted preset.
         {
             CrushJointsAudioProcessor processor(tempFile);
-            check(processor.getNumPrograms() == 12, "deleted preset does not reappear");
+            check(processor.getNumPrograms() == 32, "deleted preset does not reappear");
         }
 
         tempFile.deleteFile();
@@ -427,6 +464,7 @@ int main()
     testABComparison();
     testProgramsAndState();
     testProcessorDspWiring();
+    testLegacyPresets();
     testParameterLocksAndRandomize();
     testCustomPresetFromProcessor();
 

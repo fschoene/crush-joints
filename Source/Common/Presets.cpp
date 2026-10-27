@@ -1,7 +1,79 @@
 #include "Presets.h"
 
+#include <cmath>
+
 namespace CrushJoints
 {
+    namespace
+    {
+        struct LegacyPresetData
+        {
+            const char* name;
+            float distOn;
+            float mech;
+            float tube;
+            float filterOn;
+            float cutoffNormalized;
+            float res;
+            float compOn;
+            float amount;
+            float phat;
+            float mix;
+            float volumeNormalized;
+        };
+
+        // Original 20-program factory bank. Values are the normalized VST2
+        // parameters decoded from the legacy chunk; the cutoff/volume mappings
+        // are provisional and documented in docs/CAMELCRUSHER_REBUILT.md.
+        constexpr LegacyPresetData kLegacyPresets[] = {
+            { "Annihilate",        1, 0.000f, 0.340f, 0, 0.350f, 0.050f, 1, 0.905f, 1, 1.000f, 0.780f },
+            // The legacy chunk stores Mix = 0 here; we intentionally use 100% wet.
+            { "American Crunch",   1, 0.280f, 1.000f, 1, 1.000f, 0.475f, 1, 0.815f, 1, 1.000f, 0.655f },
+            { "American HiGain",   1, 1.000f, 1.000f, 1, 0.445f, 0.725f, 1, 0.815f, 1, 1.000f, 0.605f },
+            { "British Clean",     1, 0.050f, 0.075f, 1, 1.000f, 0.000f, 1, 0.710f, 0, 0.615f, 0.840f },
+            { "British Crunch",    1, 0.280f, 1.000f, 1, 1.000f, 0.050f, 1, 0.815f, 1, 1.000f, 0.645f },
+            { "British HiGain",    1, 1.000f, 1.000f, 1, 1.000f, 1.000f, 1, 1.000f, 1, 1.000f, 0.640f },
+            { "Bass Maker",        1, 0.020f, 0.625f, 1, 0.170f, 0.125f, 1, 0.725f, 1, 1.000f, 0.775f },
+            { "Clean Rainbow",     0, 0.020f, 0.000f, 1, 0.825f, 1.000f, 1, 0.910f, 0, 1.000f, 0.700f },
+            { "Tube Warmth",       1, 0.000f, 0.370f, 1, 1.000f, 0.190f, 0, 0.000f, 0, 1.000f, 1.000f },
+            { "Dark Crunch",       1, 0.895f, 0.000f, 1, 0.945f, 0.170f, 1, 0.910f, 0, 1.000f, 0.615f },
+            { "Destroyer",         1, 0.800f, 0.940f, 1, 0.580f, 1.000f, 1, 0.910f, 1, 1.000f, 0.600f },
+            { "Ultra Phat",        1, 0.180f, 0.985f, 0, 1.000f, 0.175f, 1, 0.670f, 0, 1.000f, 0.665f },
+            { "Distort",           1, 1.000f, 1.000f, 1, 0.690f, 1.000f, 1, 0.910f, 1, 1.000f, 0.595f },
+            { "Dream",             0, 0.020f, 0.000f, 1, 0.765f, 0.935f, 1, 0.910f, 0, 1.000f, 0.650f },
+            { "More Beef",         1, 0.000f, 0.200f, 0, 0.500f, 0.000f, 1, 0.780f, 0, 1.000f, 0.760f },
+            { "Santana Row",       1, 0.440f, 0.580f, 1, 0.615f, 0.935f, 0, 0.910f, 0, 1.000f, 0.700f },
+            { "Fuzz Filter",       1, 0.205f, 0.760f, 1, 0.430f, 0.380f, 1, 0.433f, 1, 0.270f, 1.000f },
+            { "Subtle Master",     1, 0.000f, 0.105f, 1, 1.000f, 0.095f, 1, 0.100f, 0, 1.000f, 1.000f },
+            { "YouWereWarned",     1, 0.940f, 0.965f, 1, 0.710f, 0.345f, 1, 0.390f, 1, 0.685f, 0.645f },
+            { "Turn it to 11",     1, 1.000f, 1.000f, 1, 0.695f, 1.000f, 1, 1.000f, 1, 1.000f, 0.555f },
+        };
+
+        float legacyCutoffToHz(float normalized)
+        {
+            // Provisional mapping: 20 Hz .. 20 kHz, exponential.
+            return juce::jlimit(20.0f, 20000.0f,
+                                20.0f * std::pow(1000.0f, juce::jlimit(0.0f, 1.0f, normalized)));
+        }
+
+        float legacyVolumeToDb(float normalized)
+        {
+            // Reverse-camel's documented stepped master-volume mapping.
+            static constexpr float decibels[] = {
+                -60.0f, -55.0f, -38.0f, -29.0f, -22.0f, -16.0f,
+                -12.0f, -8.0f, -5.0f, -3.0f, 0.0f
+            };
+
+            const float position = juce::jlimit(0.0f, 1.0f, normalized) * 10.0f;
+            const int index0 = juce::jlimit(0, 10, static_cast<int>(position));
+            const int index1 = juce::jmin(index0 + 1, 10);
+            const float fraction = position - static_cast<float>(index0);
+            const float db = decibels[index0] + (decibels[index1] - decibels[index0]) * fraction;
+
+            return juce::jlimit(-24.0f, 12.0f, db);
+        }
+    }
+
     void Presets::createFactoryPresets()
     {
         factoryPresets.push_back({
@@ -216,6 +288,7 @@ namespace CrushJoints
         factoryPresets.clear();
         userPresets.clear();
         createFactoryPresets();
+        createLegacyPresets();
         loadUserPresets();
     }
 
@@ -232,6 +305,38 @@ namespace CrushJoints
     int Presets::getNumUserPresets() const
     {
         return static_cast<int>(userPresets.size());
+    }
+
+    int Presets::getNumLegacyPresets() const
+    {
+        int count = 0;
+
+        for (const auto& preset : factoryPresets)
+            if (preset.category == PresetCategory::legacy)
+                ++count;
+
+        return count;
+    }
+
+    int Presets::getNumCrushClonePresets() const
+    {
+        int count = 0;
+
+        for (const auto& preset : factoryPresets)
+            if (preset.category == PresetCategory::crushClone)
+                ++count;
+
+        return count;
+    }
+
+    PresetCategory Presets::getPresetCategory(int index) const
+    {
+        if (index < 0 || index >= getNumPresets())
+            return PresetCategory::crushClone;
+
+        return isFactoryPreset(index)
+                   ? factoryPresets[static_cast<size_t>(index)].category
+                   : PresetCategory::user;
     }
 
     Preset Presets::getPreset(int index) const
@@ -258,10 +363,33 @@ namespace CrushJoints
         return userIndex >= 0 && userIndex < static_cast<int>(userPresets.size());
     }
 
+    void Presets::createLegacyPresets()
+    {
+        for (const auto& legacy : kLegacyPresets)
+        {
+            Preset preset;
+            preset.name = legacy.name;
+            preset.tube = legacy.tube;
+            preset.mech = legacy.mech;
+            preset.tubeOn = legacy.distOn >= 0.5f;
+            preset.cutoff = legacyCutoffToHz(legacy.cutoffNormalized);
+            preset.res = legacy.res;
+            preset.lpfOn = legacy.filterOn >= 0.5f;
+            preset.amount = legacy.amount;
+            preset.phat = legacy.phat >= 0.5f;
+            preset.compOn = legacy.compOn >= 0.5f;
+            preset.volume = legacyVolumeToDb(legacy.volumeNormalized);
+            preset.mix = legacy.mix;
+            preset.masterOn = true;
+            preset.category = PresetCategory::legacy;
+            factoryPresets.push_back(preset);
+        }
+    }
+
     int Presets::saveUserPreset(Preset preset)
     {
         preset.name = preset.name.trim().substring(0, 64);
-        preset.isUser = true;
+        preset.category = PresetCategory::user;
 
         if (preset.name.isEmpty())
             return -1;
@@ -373,7 +501,7 @@ namespace CrushJoints
             preset.volume = juce::jlimit(-24.0f, 12.0f, static_cast<float>(element->getDoubleAttribute("volume", 0.0)));
             preset.mix = juce::jlimit(0.0f, 1.0f, static_cast<float>(element->getDoubleAttribute("mix", 1.0)));
             preset.masterOn = element->getBoolAttribute("masterOn", true);
-            preset.isUser = true;
+            preset.category = PresetCategory::user;
 
             bool duplicate = false;
 

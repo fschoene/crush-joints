@@ -10,16 +10,17 @@ plugin, featuring:
 - 24dB/octave low-pass filter with resonance
 - One-knob compressor with Phat mode
 - Master volume and mix controls
-- 12 factory presets plus saveable user presets
+- 20 original presets plus 12 CrushClone presets, grouped into Legacy/Original, CrushClone and User categories
+- Saveable user presets in a separate User group
 - A/B parameter comparison with copy-between-slots
 - Per-parameter randomize locks with double-click reset
 - Resizable dark blue/yellow interface with labelled controls
 
-> **Current status:** Version 1 is feature-complete: full signal chain,
-> A/B comparison, user presets and the modern editor are implemented and
-> covered by offline tests. The plugin builds as VST3/AU/Standalone. Host
-> validation (`pluginval`/`auval`/DAW testing) remains as release work; further
-> GUI/workflow items are planned for Version 2. See
+> **Current status:** Version 1 core is feature-complete: full signal chain,
+> A/B comparison, original and CrushClone presets, user presets and the modern
+> editor are implemented and covered by offline tests. The plugin builds as
+> VST3/AU/Standalone. Host validation (`pluginval`/`auval`/DAW testing) remains
+> as release work; further GUI/workflow items are planned for Version 2. See
 > [docs/STATUS.md](docs/STATUS.md), [docs/VERSION_1.md](docs/VERSION_1.md) and
 > [docs/VERSION_2.md](docs/VERSION_2.md).
 

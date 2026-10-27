@@ -202,6 +202,11 @@ bool CrushJointsAudioProcessor::isUserPreset(int programIndex) const
     return presets.isUserPreset(programIndex);
 }
 
+CrushJoints::PresetCategory CrushJointsAudioProcessor::getPresetCategory(int programIndex) const
+{
+    return presets.getPresetCategory(programIndex);
+}
+
 int CrushJointsAudioProcessor::getCurrentProgram()
 {
     return currentProgram;
@@ -443,7 +448,7 @@ CrushJoints::Preset CrushJointsAudioProcessor::captureAsPreset(const juce::Strin
     preset.volume = volumeParam->get();
     preset.mix = mixParam->get();
     preset.masterOn = masterOnParam->get();
-    preset.isUser = true;
+    preset.category = CrushJoints::PresetCategory::user;
     return preset;
 }
 
