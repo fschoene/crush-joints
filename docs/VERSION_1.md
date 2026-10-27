@@ -1,14 +1,18 @@
 # Version 1 — Faithful CamelCrusher clone + modern workflow
 
-> **Status:** feature-complete for the clone scope; the Milestone 4 release
-> work is still open. Back to the [roadmap](ROADMAP.md).
+> **Status:** the v1 core is feature-complete; the original factory-bank and
+> preset-category expansion (Milestone 4a) and the Milestone 4 release work are
+> still open. Back to the [roadmap](ROADMAP.md).
 
 Version 1 is the CamelCrusher clone itself, plus the workflow features that
 made it practical to use and test:
 
 - the full signal chain (Tube/Mech distortion, SVF filter, custom one-knob
   compressor with Phat, master section),
-- 12 factory presets and disk-backed user presets,
+- the original 20-program CamelCrusher factory bank plus the current 12
+  CrushClone presets, organized into **Legacy / Original**, **CrushClone** and
+  **User** groups (Milestone 4a, pending),
+- disk-backed user presets (the User group starts empty),
 - A/B comparison with copy-between-slots,
 - a modern resizable editor with visible labels, dark blue/yellow theme,
   value readout, double-click reset and randomize locks.
@@ -18,7 +22,9 @@ made it practical to use and test:
 Anything that is not required to call this a faithful, usable CamelCrusher
 clone is deferred. The remaining Milestone 3 GUI work now lives in
 [Version 2](VERSION_2.md); unscheduled ideas stay in the
-[roadmap backlog](ROADMAP.md#idea-backlog).
+[roadmap backlog](ROADMAP.md#idea-backlog). The original factory bank and
+preset categories are the one intentionally added v1 scope item (Milestone
+4a).
 
 ## Milestone 1 — Real DSP (completed 2026-10-25)
 
@@ -84,6 +90,34 @@ Completed:
 
 The remaining GUI work was moved to [Version 2](VERSION_2.md).
 
+## Milestone 4a — Original preset bank and categories (v1 scope, pending)
+
+**Status:** not started.
+
+Goal: make the preset bank authentic and easier to navigate before the v1
+release.
+
+- Add the original 20-program CamelCrusher factory bank decoded in
+  [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md).
+- Map legacy normalized cutoff and master-volume values to our parameter
+  ranges; keep tube/mech/res/amount/mix and switch values direct.
+- Keep the current 12 CrushClone presets as a separate group.
+- Group presets in the selector as:
+  - **Legacy / Original** (provisional label; UI copy can be renamed),
+  - **CrushClone** (the current 12 presets),
+  - **User** (empty until the user saves a preset).
+- Ensure saving a user preset adds it to the User group; deleting removes it.
+- Decide whether group headings are display-only or part of program indexing;
+  preserve existing program and state behaviour unless a migration is required.
+- **American Crunch:** use Mix = 100% wet as a deliberate manual correction.
+  The legacy chunk stores 0; record the deviation.
+- Tests:
+  - all 20 original presets load with expected converted values,
+  - the three groups have the expected contents and User starts empty,
+  - user save/delete and host program names still work.
+- Update the preset conversion notes in the research doc if the final cutoff or
+  volume mappings differ from the proposed values.
+
 ## Milestone 4 — Validation and release (pending)
 
 **Status:** not started.
@@ -94,7 +128,8 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
 - Test in at least Reaper (VST3) and Logic Pro (AU); add Ableton if available.
 - Consider CI (GitHub Actions) for macOS build + pluginval; consider Windows VST3
   and Linux VST3/LV2 later.
-- Verify state round-trip, automation and preset recall in each host.
+- Verify state round-trip, automation, original/CrushClone/User preset recall
+  and category behaviour in each host.
 - Keep the clean build warning-free as new code lands.
 - Add a LICENSE file: the README claims GPLv3 but the repository currently has
   no `LICENSE` file.
@@ -106,6 +141,8 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
 - [x] No pass-through stubs left in the signal chain.
 - [x] A/B comparison and a persistent user preset bank implemented.
 - [x] Preset, program, A/B and state behaviour covered by offline tests.
+- [ ] Original 20-program factory bank integrated and verified.
+- [ ] Preset groups Legacy/Original, CrushClone and User implemented.
 - [ ] Presets, state and host automation verified in at least two DAWs.
 - [ ] `pluginval` strictness 5+ and `auval` pass.
 - [x] VST3, AU and Standalone artefacts built from a clean checkout.

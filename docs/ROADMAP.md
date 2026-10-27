@@ -10,7 +10,7 @@ version plans live in [VERSION_1.md](VERSION_1.md) and
 
 | Version | Status | Summary | Details |
 |---------|--------|---------|---------|
-| **Version 1** | Feature-complete; release validation pending | Faithful CamelCrusher clone plus the workflow features needed to use it: full DSP chain, factory/user presets, A/B and a modern resizable editor | [VERSION_1.md](VERSION_1.md) |
+| **Version 1** | Core feature-complete; preset expansion and release validation pending | Faithful CamelCrusher clone plus the workflow features needed to use it: full DSP chain, the original 20-program preset bank plus CrushClone presets, user presets, A/B and a modern resizable editor | [VERSION_1.md](VERSION_1.md) |
 | **Version 2** | Planned, not started | Remaining GUI/workflow work: output meter, knob modes/MIDI Learn, accessibility, styling and smarter Randomize | [VERSION_2.md](VERSION_2.md) |
 
 ### Version 1 at a glance
@@ -19,10 +19,13 @@ version plans live in [VERSION_1.md](VERSION_1.md) and
 - 24 dB/oct SVF low-pass filter with resonance.
 - One-knob compressor with Phat parallel path.
 - Master volume, mix, safety limiter and full bypass.
-- 12 factory presets plus saveable user presets.
+- Original 20-program factory bank plus the 12 CrushClone presets, organized
+  into Legacy/Original, CrushClone and User groups.
+- Saveable user presets; the User group starts empty.
 - A/B comparison with copy-between-slots.
 - Resizable dark blue/yellow editor with labels, locks, readout and
   double-click reset.
+- **Open:** Milestone 4a original preset bank/category integration.
 - **Open:** Milestone 4 host validation and release work.
 
 ### Version 2 at a glance
@@ -35,7 +38,8 @@ version plans live in [VERSION_1.md](VERSION_1.md) and
 
 ## Current focus
 
-1. Finish Version 1: complete Milestone 4 validation and release work.
+1. Finish Version 1: complete Milestone 4a (original preset bank and
+   categories), then Milestone 4 validation and release work.
 2. Then start Version 2 from its initial scope.
 3. Promote backlog items into a version plan only when they are deliberately
    scheduled.
@@ -106,8 +110,6 @@ appropriate acceptance criteria.
 
 ### Legacy compatibility and reference data
 
-- Original 20-program factory bank (candidate v1 fidelity addition; see
-  [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md)).
 - Mono-in/stereo-out bus compatibility (candidate v1 host-validation fix; the
   original VST2 supported `CanMono`).
 - Original parameter order/IDs and legacy chunk import/export (v2 or separate
@@ -119,7 +121,7 @@ appropriate acceptance criteria.
 
 ### Workflow
 
-- Preset categories, search/filter and comparison.
+- Preset search/filter and comparison.
 - Session management and auto-save.
 - Favourite presets.
 - Preset import/export (`.FXP`/`.FXB` or a simple JSON format).
