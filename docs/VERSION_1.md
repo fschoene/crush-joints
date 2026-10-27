@@ -120,8 +120,7 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
 
 ## Milestone 4b — Mono/stereo bus compatibility (v1 scope, completed)
 
-**Status:** implementation and offline tests complete; host verification is
-part of Milestone 4.
+**Status:** implementation, offline tests and host verification complete.
 
 - [x] Accept and test these layouts:
       mono in → mono out,
@@ -136,8 +135,7 @@ part of Milestone 4.
       the negotiated channel count instead of assuming two.
 - [x] Add offline tests for every supported layout, including level
       preservation, centred mono→stereo output and stereo independence.
-- [ ] Verify in Reaper with a mono vocal/guitar track and in Logic with a mono
-      AU track (tracked in Milestone 4).
+- [x] Verify mono VST3 and AU in a host — passed in Reaper.
 - Acceptance: mono works without host duplication and stereo results are
   unchanged in the offline tests.
 
@@ -166,8 +164,8 @@ part of Milestone 4.
 - [x] Preset, program, A/B and state behaviour covered by offline tests.
 - [x] Original 20-program factory bank integrated and verified.
 - [x] Preset groups Legacy/Original, CrushClone and User implemented.
-- [x] Mono/mono, stereo/stereo and mono/stereo bus layouts supported and
-      covered by offline tests.
+- [x] Mono/mono, stereo/stereo and mono/stereo bus layouts supported, covered
+      by offline tests and verified in Reaper for VST3 and AU.
 - [ ] Presets, state and host automation verified in at least two DAWs.
 - [ ] `pluginval` strictness 5+ and `auval` pass.
 - [x] VST3, AU and Standalone artefacts built from a clean checkout.

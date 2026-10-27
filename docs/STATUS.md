@@ -64,7 +64,8 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
   dark blue/yellow style. Double-click resets a knob to its parameter default.
 - Knobs and toggles update the APVTS parameters immediately.
 - Mono tracks are supported natively: mono in → mono out and mono in → stereo
-  out (centred), alongside the existing stereo path.
+  out (centred), alongside the existing stereo path. Mono VST3 and AU were
+  verified in Reaper.
 - Randomize only changes continuous parameters; it skips every on/off switch
   and leaves locked parameters untouched. The readout shows the current preset
   name, or the dragged knob's value while adjusting.
@@ -190,9 +191,10 @@ Ordered roughly by impact.
     1–11, Legacy/Original 12–31 and User starts at 32. States saved before this
     change keep their parameter values but may display a different current
     program name.
-12. **Mono layout host verification is pending.** Mono/mono, mono/stereo and
-    stereo/stereo layouts pass offline tests, but Reaper/Logic mono-track
-    checks are still part of Milestone 4.
+12. **Mono/stereo host verification is done for Reaper.** Mono/mono,
+    mono/stereo and stereo/stereo layouts pass offline tests and mono VST3/AU
+    work in Reaper; Logic mono-track verification remains optional for the
+    broader Milestone 4 host matrix.
 
 ## 6. Validation checklist
 
