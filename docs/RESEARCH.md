@@ -271,7 +271,9 @@ The 12 patches used by CrushClone and CrushJoints:
 | Destroy Everything | 100 | 100 | 1000 | 70 | 80 | on | yes | -4 | 100 |
 
 Other sources mention patches named "Dream", "Annihilate" and "YouWereWarned".
-These are not in the current bank.
+These are not in the current 12-preset bank; the original 20-program factory
+bank has been decoded separately in
+[CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md).
 
 ## 9. References
 
@@ -284,7 +286,11 @@ These are not in the current bank.
    engineering. Most faithful source for the distortion coefficient tables;
    implements only Distortion and Master. Includes a Jupyter notebook with the
    amplitude-sweep and curve-fitting methodology.
-3. **Logic Pro Phat FX** — Apple's integration of CamelPhat, the paid sibling.
+3. **CamelCrusher Rebuilt** (lostlessvisuals) — native Apple Silicon remake
+   focused on legacy session recall. Provides the original host identity,
+   legacy VST2 state/chunk format and the decoded 20-program factory bank.
+   See [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md).
+4. **Logic Pro Phat FX** — Apple's integration of CamelPhat, the paid sibling.
    Not identical to CamelCrusher but architecturally related.
 
 ## 10. DSP implementation targets

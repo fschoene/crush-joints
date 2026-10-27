@@ -104,6 +104,19 @@ appropriate acceptance criteria.
   initial Version 2 GUI scope. Not a v1.0 blocker; the original CamelCrusher
   has no such feature.
 
+### Legacy compatibility and reference data
+
+- Original 20-program factory bank (candidate v1 fidelity addition; see
+  [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md)).
+- Mono-in/stereo-out bus compatibility (candidate v1 host-validation fix; the
+  original VST2 supported `CanMono`).
+- Original parameter order/IDs and legacy chunk import/export (v2 or separate
+  compatibility work).
+- Same-identity VST2 session recall (`CaCr`, 17 parameters, 20 programs,
+  chunk state) — larger separate compatibility project.
+- Original UI geometry/assets for pixel-exact styling (v2; artwork and
+  trademark review required).
+
 ### Workflow
 
 - Preset categories, search/filter and comparison.

@@ -9,6 +9,7 @@ short and links here.
 | Document | Purpose |
 |----------|---------|
 | [RESEARCH.md](RESEARCH.md) | Background on CamelCrusher, the original DSP, UI and presets |
+| [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md) | External research: legacy identity, chunk format and original 20-preset bank |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Framework decision, project layout, parameters, build and GUI architecture |
 | [STATUS.md](STATUS.md) | What actually works today, verified build results and known gaps |
 | [ROADMAP.md](ROADMAP.md) | Version navigation, current focus and the unscheduled idea backlog |
