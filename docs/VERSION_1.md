@@ -1,8 +1,9 @@
 # Version 1 — Faithful CamelCrusher clone + modern workflow
 
 > **Status:** the v1 core is feature-complete; the original factory-bank and
-> preset-category expansion (Milestone 4a) and the Milestone 4 release work are
-> still open. Back to the [roadmap](ROADMAP.md).
+> preset-category expansion (Milestone 4a), mono/stereo bus compatibility
+> (Milestone 4b) and the Milestone 4 release work are still open. Back to the
+> [roadmap](ROADMAP.md).
 
 Version 1 is the CamelCrusher clone itself, plus the workflow features that
 made it practical to use and test:
@@ -13,6 +14,7 @@ made it practical to use and test:
   CrushClone presets, organized into **Legacy / Original**, **CrushClone** and
   **User** groups (Milestone 4a, pending),
 - disk-backed user presets (the User group starts empty),
+- native mono/stereo bus support for mono tracks (Milestone 4b, pending),
 - A/B comparison with copy-between-slots,
 - a modern resizable editor with visible labels, dark blue/yellow theme,
   value readout, double-click reset and randomize locks.
@@ -23,8 +25,8 @@ Anything that is not required to call this a faithful, usable CamelCrusher
 clone is deferred. The remaining Milestone 3 GUI work now lives in
 [Version 2](VERSION_2.md); unscheduled ideas stay in the
 [roadmap backlog](ROADMAP.md#idea-backlog). The original factory bank and
-preset categories are the one intentionally added v1 scope item (Milestone
-4a).
+preset categories (Milestone 4a) and mono/stereo bus compatibility (Milestone
+4b) are the intentionally added v1 scope items.
 
 ## Milestone 1 — Real DSP (completed 2026-10-25)
 
@@ -118,6 +120,38 @@ release.
 - Update the preset conversion notes in the research doc if the final cutoff or
   volume mappings differ from the proposed values.
 
+## Milestone 4b — Mono/stereo bus compatibility (v1 scope, pending)
+
+**Status:** not started.
+
+The current processor advertises stereo input and stereo output only. That is
+usable in forgiving hosts such as Reaper, which can duplicate a mono track into
+both input channels, but it is not native mono support and can fail in hosts
+that negotiate mono-in or mono-in/stereo-out layouts. The original VST2
+reported `CanMono`, so this is also a fidelity gap.
+
+Goal: make mono tracks work without relying on host-side duplication.
+
+- Accept and test these layouts:
+  - mono in → mono out,
+  - stereo in → stereo out (current path, must stay unchanged),
+  - mono in → stereo out (centred stereo output, matching the original
+    `CanMono` behaviour).
+- Update `isBusesLayoutSupported` to allow those combinations.
+- Make `processBlock` channel-count aware:
+  - mono→mono processes one channel,
+  - mono→stereo duplicates the mono input to both channels before the dry
+    capture and DSP chain,
+  - stereo→stereo keeps the existing behaviour.
+- Make `prepareToPlay`, the dry buffer, filter, compressor and master use the
+  negotiated channel count instead of assuming two.
+- Add offline tests for every supported layout, including silence, level
+  preservation and the stereo path regression.
+- Verify in Reaper with a mono vocal/guitar track and in Logic with a mono AU
+  track.
+- Acceptance: a mono track works without host duplication, stereo results are
+  unchanged, and the preset/category work is unaffected.
+
 ## Milestone 4 — Validation and release (pending)
 
 **Status:** not started.
@@ -128,8 +162,8 @@ release.
 - Test in at least Reaper (VST3) and Logic Pro (AU); add Ableton if available.
 - Consider CI (GitHub Actions) for macOS build + pluginval; consider Windows VST3
   and Linux VST3/LV2 later.
-- Verify state round-trip, automation, original/CrushClone/User preset recall
-  and category behaviour in each host.
+- Verify state round-trip, automation, original/CrushClone/User preset recall,
+  category behaviour and mono/stereo bus negotiation in each host.
 - Keep the clean build warning-free as new code lands.
 - Add a LICENSE file: the README claims GPLv3 but the repository currently has
   no `LICENSE` file.
@@ -143,6 +177,7 @@ release.
 - [x] Preset, program, A/B and state behaviour covered by offline tests.
 - [ ] Original 20-program factory bank integrated and verified.
 - [ ] Preset groups Legacy/Original, CrushClone and User implemented.
+- [ ] Mono/mono, stereo/stereo and mono/stereo bus layouts supported and tested.
 - [ ] Presets, state and host automation verified in at least two DAWs.
 - [ ] `pluginval` strictness 5+ and `auval` pass.
 - [x] VST3, AU and Standalone artefacts built from a clean checkout.
