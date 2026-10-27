@@ -1,8 +1,7 @@
 # Version 1 — Faithful CamelCrusher clone + modern workflow
 
-> **Status:** the v1 core is feature-complete; mono/stereo bus compatibility
-> (Milestone 4b) and the Milestone 4 release work are still open. Back to the
-> [roadmap](ROADMAP.md).
+> **Status:** the v1 core is feature-complete; only the Milestone 4 release
+> validation work remains open. Back to the [roadmap](ROADMAP.md).
 
 Version 1 is the CamelCrusher clone itself, plus the workflow features that
 made it practical to use and test:
@@ -14,7 +13,7 @@ made it practical to use and test:
   **Legacy / Original**, **CrushClone** and **User** groups (Milestone 4a,
   completed),
 - disk-backed user presets (the User group starts empty),
-- native mono/stereo bus support for mono tracks (Milestone 4b, pending),
+- native mono/stereo bus support for mono tracks (Milestone 4b, implemented),
 - A/B comparison with copy-between-slots,
 - a modern resizable editor with visible labels, dark blue/yellow theme,
   value readout, double-click reset and randomize locks.
@@ -25,8 +24,8 @@ Anything that is not required to call this a faithful, usable CamelCrusher
 clone is deferred. The remaining Milestone 3 GUI work now lives in
 [Version 2](VERSION_2.md); unscheduled ideas stay in the
 [roadmap backlog](ROADMAP.md#idea-backlog). The original factory bank and
-preset categories (Milestone 4a) are implemented; mono/stereo bus compatibility
-(Milestone 4b) remains the other intentionally added v1 scope item.
+preset categories (Milestone 4a) and mono/stereo bus compatibility (Milestone
+4b) are implemented. Only the Milestone 4 release validation remains.
 
 ## Milestone 1 — Real DSP (completed 2026-10-25)
 
@@ -119,39 +118,30 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
       still work.
 - [x] Document the chosen cutoff and volume mappings as provisional estimates.
 
-## Milestone 4b — Mono/stereo bus compatibility (v1 scope, pending)
+## Milestone 4b — Mono/stereo bus compatibility (v1 scope, completed)
 
-**Status:** not started.
+**Status:** implementation and offline tests complete; host verification is
+part of Milestone 4.
 
-The current processor advertises stereo input and stereo output only. That is
-usable in forgiving hosts such as Reaper, which can duplicate a mono track into
-both input channels, but it is not native mono support and can fail in hosts
-that negotiate mono-in or mono-in/stereo-out layouts. The original VST2
-reported `CanMono`, so this is also a fidelity gap.
+- [x] Accept and test these layouts:
+      mono in → mono out,
+      stereo in → stereo out (unchanged),
+      mono in → stereo out (centred stereo output, matching the original
+      `CanMono` behaviour).
+- [x] Update `isBusesLayoutSupported` to allow those combinations.
+- [x] Make `processBlock` channel-count aware: mono→mono processes one channel,
+      mono→stereo duplicates the mono input to both channels before the dry
+      capture and DSP chain, stereo→stereo keeps the existing behaviour.
+- [x] Make `prepareToPlay`, the dry buffer, filter, compressor and master use
+      the negotiated channel count instead of assuming two.
+- [x] Add offline tests for every supported layout, including level
+      preservation, centred mono→stereo output and stereo independence.
+- [ ] Verify in Reaper with a mono vocal/guitar track and in Logic with a mono
+      AU track (tracked in Milestone 4).
+- Acceptance: mono works without host duplication and stereo results are
+  unchanged in the offline tests.
 
-Goal: make mono tracks work without relying on host-side duplication.
-
-- Accept and test these layouts:
-  - mono in → mono out,
-  - stereo in → stereo out (current path, must stay unchanged),
-  - mono in → stereo out (centred stereo output, matching the original
-    `CanMono` behaviour).
-- Update `isBusesLayoutSupported` to allow those combinations.
-- Make `processBlock` channel-count aware:
-  - mono→mono processes one channel,
-  - mono→stereo duplicates the mono input to both channels before the dry
-    capture and DSP chain,
-  - stereo→stereo keeps the existing behaviour.
-- Make `prepareToPlay`, the dry buffer, filter, compressor and master use the
-  negotiated channel count instead of assuming two.
-- Add offline tests for every supported layout, including silence, level
-  preservation and the stereo path regression.
-- Verify in Reaper with a mono vocal/guitar track and in Logic with a mono AU
-  track.
-- Acceptance: a mono track works without host duplication, stereo results are
-  unchanged, and the preset/category work is unaffected.
-
-## Milestone 5 — Validation and release (pending)
+## Milestone 4 — Validation and release (pending)
 
 **Status:** not started.
 
@@ -176,7 +166,8 @@ Goal: make mono tracks work without relying on host-side duplication.
 - [x] Preset, program, A/B and state behaviour covered by offline tests.
 - [x] Original 20-program factory bank integrated and verified.
 - [x] Preset groups Legacy/Original, CrushClone and User implemented.
-- [ ] Mono/mono, stereo/stereo and mono/stereo bus layouts supported and tested.
+- [x] Mono/mono, stereo/stereo and mono/stereo bus layouts supported and
+      covered by offline tests.
 - [ ] Presets, state and host automation verified in at least two DAWs.
 - [ ] `pluginval` strictness 5+ and `auval` pass.
 - [x] VST3, AU and Standalone artefacts built from a clean checkout.

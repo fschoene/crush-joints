@@ -38,7 +38,7 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 | Offline DSP tests | ✅ passing | `CrushJointsTests`, 8 test groups |
 | Processor tests | ✅ passing | `CrushJointsProcessorTests`, A/B, programs, state, locks and randomize |
 | Plugin entry point | ✅ working | `createPluginFilter()` present |
-| Processor/buses/state | ✅ working | stereo in/out; APVTS XML plus `currentProgram`, A/B slots and lock flags |
+| Processor/buses/state | ✅ working | stereo + mono/mono + mono/stereo I/O; APVTS XML plus `currentProgram`, A/B slots and lock flags |
 | Parameter set | ✅ working | 12 parameters, editor attachments bound |
 | Distortion DSP | ✅ implemented | reverse-camel 101-entry Tube/Mech tables, Tube→Mech series, bypass |
 | Filter DSP | ✅ implemented | ZDF/TPT SVF low-pass, Q 0.7071–4.2071, wide-open bypass |
@@ -63,6 +63,8 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 - Every knob has a visible uppercase label, a padlock button and a high-contrast
   dark blue/yellow style. Double-click resets a knob to its parameter default.
 - Knobs and toggles update the APVTS parameters immediately.
+- Mono tracks are supported natively: mono in → mono out and mono in → stereo
+  out (centred), alongside the existing stereo path.
 - Randomize only changes continuous parameters; it skips every on/off switch
   and leaves locked parameters untouched. The readout shows the current preset
   name, or the dragged knob's value while adjusting.
@@ -135,7 +137,9 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
    being randomised.
 8. Filter resonance boosting a tone at the cutoff and compressor amount/Phat
    changing the rendered output.
-9. Optional editor snapshots at 80%, 100% and 150% (`CRUSHJOINTS_RENDER_UI=1`).
+9. Mono/mono, mono/stereo and stereo/stereo bus layouts, including centred
+   mono-to-stereo output and stereo independence.
+10. Optional editor snapshots at 80%, 100% and 150% (`CRUSHJOINTS_RENDER_UI=1`).
 
 Result:
 
@@ -186,8 +190,9 @@ Ordered roughly by impact.
     1–11, Legacy/Original 12–31 and User starts at 32. States saved before this
     change keep their parameter values but may display a different current
     program name.
-12. **No mono/stereo bus support yet.** Mono-in/stereo-out and mono-in/mono-out
-    are scheduled as Milestone 4b.
+12. **Mono layout host verification is pending.** Mono/mono, mono/stereo and
+    stereo/stereo layouts pass offline tests, but Reaper/Logic mono-track
+    checks are still part of Milestone 4.
 
 ## 6. Validation checklist
 

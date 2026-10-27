@@ -14,6 +14,7 @@ plugin, featuring:
 - Saveable user presets in a separate User group
 - A/B parameter comparison with copy-between-slots
 - Per-parameter randomize locks with double-click reset
+- Native mono/stereo bus support for mono tracks
 - Resizable dark blue/yellow interface with labelled controls
 
 > **Current status:** Version 1 core is feature-complete: full signal chain,

@@ -19,7 +19,7 @@ short and links here.
 ## Current snapshot
 
 - **Build:** working. Clean build produces VST3, AU and Standalone on macOS
-  with CMake + a local JUCE 9 checkout.
+  with CMake + a local JUCE 9 checkout, including mono and stereo bus layouts.
 - **DSP:** all four modules implemented (Tube/Mech tables, SVF low-pass,
   one-knob compressor + Phat, master limiter). Offline DSP and processor tests
   pass, including a comparison against the reverse-camel reference path.

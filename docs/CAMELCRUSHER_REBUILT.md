@@ -132,8 +132,9 @@ Notes and caveats:
    cutoff/volume mappings. The raw values are above.
 2. **Mono input support.** The original VST2 is `CanMono` and supports
    mono-in/stereo-out. Our `isBusesLayoutSupported` currently requires stereo
-   in and stereo out. This is scheduled as Milestone 4b in
-   [VERSION_1.md](VERSION_1.md).
+   in and stereo out. This is implemented in v1 (Milestone 4b): mono/mono,
+   mono/stereo and stereo/stereo layouts are supported and covered by offline
+   tests. See [VERSION_1.md](VERSION_1.md).
 3. **Host/editor validation lessons.** Their tests cover AU/VST3 editor view
    creation, bundle loading, mono/stereo routing, and `auvaltool` success.
    Useful additions for Milestone 4:
@@ -168,8 +169,8 @@ Notes and caveats:
 ## 7. Suggested next step
 
 The original 20-preset bank is implemented in v1 (Milestone 4a). Mono/stereo
-bus support is scheduled as Milestone 4b. Legacy VST2 session compatibility
-remains a separate v2/separate-tool idea.
+bus support is implemented in v1 (Milestone 4b). Legacy VST2 session
+compatibility remains a separate v2/separate-tool idea.
 
 ## Sources
 

@@ -106,8 +106,15 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 
 ## 4. Signal chain
 
-The processor advertises one stereo input and one stereo output and rejects
-other layouts.
+The processor supports these main bus layouts:
+
+| Input | Output | Behaviour |
+|-------|--------|-----------|
+| Stereo | Stereo | Primary path, unchanged |
+| Mono | Mono | Single-channel processing |
+| Mono | Stereo | Mono input duplicated before the dry capture and DSP chain; centred stereo output |
+
+Stereo input with mono output is rejected.
 
 ```
 Audio In
@@ -319,6 +326,7 @@ verifies:
 `Tests/ProcessorTests.cpp` (`CrushJointsProcessorTests`) verifies:
 
 - A/B switching, edit capture, slot copying and restoration,
+- mono/mono, mono/stereo and stereo/stereo bus layouts,
 - program changes and the real `getCurrentProgram()` value, including legacy
   presets and category counts,
 - plugin state round-trip including `currentProgram`, both A/B slots and the

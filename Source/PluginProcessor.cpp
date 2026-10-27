@@ -95,13 +95,24 @@ double CrushJointsAudioProcessor::getTailLengthSeconds() const
 
 bool CrushJointsAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
-        return false;
+    const auto input = layouts.getMainInputChannelSet();
+    const auto output = layouts.getMainOutputChannelSet();
 
-    if (layouts.getMainInputChannelSet() != juce::AudioChannelSet::stereo())
-        return false;
+    // Stereo is the primary path. Mono input is supported for mono tracks;
+    // mono-in/stereo-out produces centred stereo.
+    if (input == juce::AudioChannelSet::stereo()
+        && output == juce::AudioChannelSet::stereo())
+        return true;
 
-    return true;
+    if (input == juce::AudioChannelSet::mono()
+        && output == juce::AudioChannelSet::mono())
+        return true;
+
+    if (input == juce::AudioChannelSet::mono()
+        && output == juce::AudioChannelSet::stereo())
+        return true;
+
+    return false;
 }
 
 //==============================================================================
@@ -137,6 +148,19 @@ void CrushJointsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
 {
     juce::ScopedNoDenormals noDenormals;
     juce::ignoreUnused(midiMessages);
+
+    const int numInputChannels = getTotalNumInputChannels();
+    const int numOutputChannels = getTotalNumOutputChannels();
+    const int numSamples = buffer.getNumSamples();
+
+    // A mono track feeding a stereo output needs the mono signal in both
+    // channels before the dry capture and the DSP chain.
+    if (numInputChannels == 1
+        && numOutputChannels == 2
+        && buffer.getNumChannels() >= 2)
+    {
+        buffer.copyFrom(1, 0, buffer, 0, 0, numSamples);
+    }
 
     // Push the current parameter values into the DSP modules.
     distortion.setTubeAmount(tubeParam->get());

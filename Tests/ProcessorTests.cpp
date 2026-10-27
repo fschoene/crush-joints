@@ -334,6 +334,102 @@ namespace
         checkClose(getValue(processor, "phat"), 1.0f, 0.0f, "Turn it to 11 Phat on");
     }
 
+    void testMonoStereoLayouts()
+    {
+        const auto makeLayout = [](const juce::AudioChannelSet& input,
+                                   const juce::AudioChannelSet& output)
+        {
+            juce::AudioProcessor::BusesLayout layout;
+            layout.inputBuses.add(input);
+            layout.outputBuses.add(output);
+            return layout;
+        };
+
+        {
+            CrushJointsAudioProcessor processor;
+            const auto layout = makeLayout(juce::AudioChannelSet::mono(),
+                                           juce::AudioChannelSet::mono());
+            check(processor.setBusesLayout(layout), "mono in / mono out accepted");
+            check(processor.getTotalNumInputChannels() == 1, "mono input channel count");
+            check(processor.getTotalNumOutputChannels() == 1, "mono output channel count");
+
+            processor.prepareToPlay(48000.0, 512);
+            juce::AudioBuffer<float> buffer(1, 512);
+            auto* data = buffer.getWritePointer(0);
+
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+                data[i] = 0.25f * std::sin(0.031f * static_cast<float>(i));
+
+            const auto inputRms = rmsOfBuffer(buffer);
+            juce::MidiBuffer midi;
+            processor.processBlock(buffer, midi);
+
+            check(std::isfinite(buffer.getSample(0, 0)), "mono output is finite");
+            check(rmsOfBuffer(buffer) > inputRms * 0.1f, "mono output carries signal");
+        }
+
+        {
+            CrushJointsAudioProcessor processor;
+            const auto layout = makeLayout(juce::AudioChannelSet::mono(),
+                                           juce::AudioChannelSet::stereo());
+            check(processor.setBusesLayout(layout), "mono in / stereo out accepted");
+            check(processor.getTotalNumInputChannels() == 1, "mono-to-stereo input count");
+            check(processor.getTotalNumOutputChannels() == 2, "mono-to-stereo output count");
+
+            processor.prepareToPlay(48000.0, 512);
+            juce::AudioBuffer<float> buffer(2, 512);
+            auto* left = buffer.getWritePointer(0);
+            auto* right = buffer.getWritePointer(1);
+
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+            {
+                left[i] = 0.25f * std::sin(0.031f * static_cast<float>(i));
+                right[i] = 0.0f;
+            }
+
+            juce::MidiBuffer midi;
+            processor.processBlock(buffer, midi);
+
+            check(std::isfinite(buffer.getSample(0, 0)), "mono-to-stereo left is finite");
+            check(std::isfinite(buffer.getSample(1, 0)), "mono-to-stereo right is finite");
+            check(rmsOfBuffer(buffer) > 0.0001f, "mono-to-stereo output carries signal");
+
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+                checkClose(buffer.getSample(0, i), buffer.getSample(1, i), 1.0e-6f,
+                           "mono-to-stereo is centred");
+        }
+
+        {
+            CrushJointsAudioProcessor processor;
+            const auto layout = makeLayout(juce::AudioChannelSet::stereo(),
+                                           juce::AudioChannelSet::stereo());
+            check(processor.setBusesLayout(layout), "stereo in / stereo out accepted");
+
+            processor.prepareToPlay(48000.0, 512);
+            juce::AudioBuffer<float> buffer(2, 512);
+
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+            {
+                buffer.setSample(0, i, 0.25f * std::sin(0.031f * static_cast<float>(i)));
+                buffer.setSample(1, i, 0.10f * std::sin(0.017f * static_cast<float>(i)));
+            }
+
+            juce::MidiBuffer midi;
+            processor.processBlock(buffer, midi);
+
+            check(std::isfinite(buffer.getSample(0, 10)), "stereo left is finite");
+            check(std::isfinite(buffer.getSample(1, 10)), "stereo right is finite");
+            check(std::abs(buffer.getSample(0, 10) - buffer.getSample(1, 10)) > 1.0e-4f,
+                  "stereo channels remain independent");
+        }
+
+        CrushJointsAudioProcessor processor;
+        check(! processor.isBusesLayoutSupported(
+                  makeLayout(juce::AudioChannelSet::stereo(),
+                             juce::AudioChannelSet::mono())),
+              "stereo in / mono out is rejected");
+    }
+
     void testParameterLocksAndRandomize()
     {
         CrushJointsAudioProcessor processor;
@@ -467,6 +563,7 @@ int main()
     testProgramsAndState();
     testProcessorDspWiring();
     testLegacyPresets();
+    testMonoStereoLayouts();
     testParameterLocksAndRandomize();
     testCustomPresetFromProcessor();
 
