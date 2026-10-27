@@ -93,7 +93,7 @@ Remaining:
 - Run `pluginval` at strictness 5+ on the VST3.
 - Run `auval` on the AU component.
 - Test in at least Reaper (VST3) and Logic Pro (AU); add Ableton if available.
-- Add CI (GitHub Actions) for macOS build + pluginval; consider Windows VST3
+- Consider CI (GitHub Actions) for macOS build + pluginval; consider Windows VST3
   and Linux VST3/LV2 later.
 - Verify state round-trip, automation and preset recall in each host.
 - Keep the clean build warning-free as new code lands.
@@ -121,6 +121,34 @@ Grouped from the earlier `IDEAS.md`; none of these are commitments.
 - Multi-band processing.
 - Monophonic mode.
 - Stereo widening.
+
+### Master / gain matching (proposed, not implemented)
+
+- Add a **Gain Match** toggle to the Master module.
+- When enabled:
+  - disable and visually grey out the Master Volume knob;
+  - measure input and output level and apply an automatic compensation gain so
+    the output level tracks the input level;
+  - show the applied gain (and ideally the input/output levels) in the readout.
+- Start with the simple, well-defined version: peak or RMS detection over a
+  short window with smooth attack/release to avoid pumping.
+- Optional second mode: perceived-loudness matching using a K-weighted
+  short-term loudness estimate, exposed as a separate "Gain Match Style"
+  option. This is more work but closer to what users actually hear.
+- Decisions to settle before implementation:
+  - measurement points: input before the effect chain vs after Mix, and
+    whether the safety limiter is included in the measurement;
+  - interaction with Mix, Master bypass, compressor/Phat makeup and the ±2.0
+    limiter;
+  - mono/stereo linking, latency, smoothing time and maximum correction range;
+  - whether Gain Match is an automatable parameter and whether Volume
+    automation is ignored while it is on;
+  - UI: greyed volume knob, applied-gain readout, optional small level meter;
+  - tests: deterministic static gain, silence/noise, stereo, limiter, bypass,
+    automation and state restore.
+- Priority: after the remaining Milestone 3 GUI items and alongside Milestone 4
+  validation. Not a v1.0 blocker; the original CamelCrusher has no such
+  feature.
 
 ### Workflow
 
