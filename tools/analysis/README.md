@@ -3,8 +3,7 @@
 Tools for measuring the original CamelCrusher so the JUCE clone can be checked
 against real behaviour. Results live in [docs/MEASUREMENTS.md](../../docs/MEASUREMENTS.md).
 
-The original plugin is **not** in this repository (Camel Audio's licence forbids
-copying it). Point the host at your own copy of `CamelCrusher.vst`, extracted
+The original plugin is **not** included in this repository. Point the host at your own copy of `CamelCrusher.vst`, extracted
 from the original installer, by putting it at `tools/analysis/vst/CamelCrusher.vst`
 or setting `CC_VST=/path/to/CamelCrusher.vst`.
 

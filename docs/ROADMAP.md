@@ -4,7 +4,8 @@ This file is the navigation layer for CrushJoints development. Detailed
 version plans live in [VERSION_1.md](VERSION_1.md) and
 [VERSION_2.md](VERSION_2.md); current implementation status is in
 [STATUS.md](STATUS.md) and the reference behaviour is in
-[RESEARCH.md](RESEARCH.md).
+[RESEARCH.md](RESEARCH.md). Measured facts about the original are in
+[MEASUREMENTS.md](MEASUREMENTS.md).
 
 ## Versions
 
@@ -39,17 +40,21 @@ version plans live in [VERSION_1.md](VERSION_1.md) and
 
 ## Current focus
 
-1. Finish Version 1: complete Milestone 4 validation and release work.
-2. Then start Version 2 from its initial scope.
-3. Promote backlog items into a version plan only when they are deliberately
+1. Measurement-driven fidelity pass (Milestone 4c in [VERSION_1.md](VERSION_1.md)):
+   fix what [MEASUREMENTS.md](MEASUREMENTS.md) shows to be wrong, then measure the
+   filter and compressor.
+2. Finish Version 1: complete Milestone 4 validation and release work.
+3. Then start Version 2 from its initial scope.
+4. Promote backlog items into a version plan only when they are deliberately
    scheduled.
 
 ## Guiding principles
 
 1. **Sound first.** A faithful DSP chain is the point of the project. GUI polish
    and format coverage come after the audio is right.
-2. **Verify against references.** Use the reverse-camel tables and CrushClone's
-   presets as the ground truth, and keep a documented comparison harness.
+2. **Verify against the original.** Measure the original plugin with
+   `tools/analysis/` and record the results in MEASUREMENTS.md. The reverse-camel
+   tables and CrushClone's presets are secondary sources.
 3. **Keep the plugin shippable at every step.** Do not break the working
    VST3/AU/Standalone build while adding features.
 4. **Document deviations.** If the clone intentionally differs from the

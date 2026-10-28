@@ -2,7 +2,9 @@
 
 Background research used to design CrushJoints. This document describes the
 **reference behaviour** we are aiming for. For the current implementation
-state, see [STATUS.md](STATUS.md).
+state, see [STATUS.md](STATUS.md). Black-box measurements of the original
+plugin are in [MEASUREMENTS.md](MEASUREMENTS.md); where they disagree with
+secondary sources below, the measurements win.
 
 ## 1. Overview
 
@@ -26,14 +28,15 @@ the installer.
 ## 2. Signal chain
 
 The module order is **not stated in the original manual**; it only lists the
-modules. The order below follows reverse-camel (Distortion → Master) and
+modules. The module order below follows reverse-camel (Distortion → Master) and
 CrushClone, and matches the module and parameter order in the original binary
-and skin (Dist, Filter, Compressor, Master). Filter and compressor order is not
-independently verified:
+and skin (Dist, Filter, Compressor, Master). **Inside Distortion the order is
+Mech first, then Tube**, which was measured on the original (MEASUREMENTS.md §4).
+Filter and compressor order is not independently verified:
 
 ```
 Audio In
-  → Distortion (Tube + Mech)
+  → Distortion (Mech → Tube, measured; each stage has its own amount)
   → Low-Pass Filter
   → Compressor (+ Phat)
   → Master (Volume + Mix + limiter)
@@ -67,7 +70,7 @@ amplitude-sweep analysis. The reference uses a **101-entry lookup table**
 indexed by the TUBE knob (0–100). Each entry stores a gain plus four
 coefficients `{gain, a, b, c}`.
 
-Per sample:
+Per sample (Tube runs **after** Mech, so `x` is the Mech output):
 
 1. `s = gain * x`, where gain maps 0–100 to approximately `1.0 … 5.0`.
 2. Three-region piecewise function:
@@ -87,12 +90,13 @@ Reference entry 100: `{4.99996, 0.0206626, 0.206618, -0.483468}` (full saturatio
 
 ### Mech distortion (DistMech)
 
-Applied after Tube, also using a **101-entry table** with three coefficients
-`{gain, b, c}`.
+Applied **first**, before Tube (measured on the original; earlier notes and
+our first implementation had the opposite order). Also uses a **101-entry
+table** with three coefficients `{gain, b, c}`.
 
 Per sample:
 
-1. `s = gain * y`, where `y` is the Tube output and gain maps 0–100 to
+1. `s = gain * y`, where `y` is the input sample and gain maps 0–100 to
    approximately `1.0 … 11.0`.
 2. Three-region piecewise function:
    - `s < -0.75`: `y = b·s + c`
@@ -129,7 +133,7 @@ rate, matching reverse-camel and keeping the dry/wet path latency-free. The
 
 | Control | Range | Default | Description |
 |---------|-------|---------|-------------|
-| CUTOFF | 20–20,000 Hz (assumed, see below) | 20,000 (open) | Low-pass cutoff, shown in Hz |
+| CUTOFF | 80–16,000 Hz, custom curve (measured) | open (16,000) | Low-pass cutoff, shown in Hz |
 | RES | 0–100 (≈0–5 effective Q, assumed) | 0 | Resonance around the cutoff |
 
 Characteristics:
@@ -139,8 +143,12 @@ Characteristics:
   filter". The manual does **not** state the slope. The 24 dB/octave (4-pole)
   figure is an assumption from reviews and CrushClone.
 - The manual only says Cutoff "sets the filter Cutoff point, in Hz" (example
-  readout `71.7 Hz`). It gives **no range**. One YouTube analysis reports
-  80 Hz–16 kHz; 20 Hz–20 kHz is our assumption, unmeasured.
+  readout `71.7 Hz`) and gives **no range**. The plugin's own display strings
+  show **80 Hz at the bottom and 16 kHz at the top**, with a non-exponential curve
+  (about 1.3 kHz at the midpoint, 5.3 kHz at 0.95; see MEASUREMENTS.md §2). This
+  confirms the YouTube analysis and replaces our earlier 20 Hz–20 kHz
+  assumption. Whether the displayed value equals the actual filter cutoff is not
+  measured yet.
 - The original binary contains several filter classes (biquad, `MoogAFilter`,
   `MS20AFilter`, `OTAAFilter`, `SVFAFilter`, comb, ring-mod and others), which
   looks like a library shared with CamelPhat. Which one CamelCrusher's `MmFilter`
@@ -173,6 +181,10 @@ Characteristics:
   - Amount 0 → threshold 0 dB, ratio 1:1 (no compression).
   - Amount 100 → threshold ≈ -30 dB, ratio ≈ 8:1 (heavy squash).
 - Auto makeup gain rises with Amount.
+- The plugin itself displays Amount as a level from **0 dB down to −40 dB**
+  (MEASUREMENTS.md §2), so the −30 dB endpoint quoted above is not the
+  original's. The display suggests Amount drives a threshold, but this is not
+  measured yet.
 - Not a transparent utility compressor: it is a density/pump tool intended for
   already-distorted signals.
 
@@ -223,12 +235,14 @@ one-pole attack/release, soft-knee gain computer; attack 10→1 ms, release
 | Control | Range | Default | Description |
 |---------|-------|---------|-------------|
 | ON/OFF | Toggle | On | Bypasses the entire plugin (dry only) |
-| VOLUME | -51 to 0 dB (reverse-camel; not in the manual) | 0 (unity) | Output level, shown in dB |
+| VOLUME | −∞ to 0 dB (measured, no positive gain) | 0 (unity) | Output level, shown in dB |
 | MIX | 0–100% | 100% (wet) | Dry/wet blend |
 
-> **Implementation note:** the plugin's Volume parameter uses **-24 to
+> **Implementation note:** the plugin's Volume parameter currently uses **-24 to
 > +12 dB**, matching CrushClone's preset bank (some presets use +2 dB) rather
-> than the original's -51 to 0 dB. The deviation is intentional for now.
+> than the original's −∞ to 0 dB. This was an intentional deviation, but the
+> measurements show the original has no gain above 0 dB; see
+> [STATUS.md](STATUS.md).
 
 Notes:
 
@@ -236,12 +250,16 @@ Notes:
 - Volume can go from silence to unity and is used for gain staging.
 - Mix is arguably the most important control; 30–60% often sounds better than
   fully wet and enables parallel processing from one plugin.
+- The original **hard-clips the output at ±0.9999** when Master is on (no knee,
+  after volume and mix; measured). With Master off the signal is passed through
+  unclipped.
 - The original applies hard output limiting, which can distort hot signals
   (manual FAQ). Turning down Volume or disabling Phat resolves it. The manual
   also mentions an **Output Level meter** in the main display that shows
   clipping.
-- CrushJoints follows CrushClone's safety limiter at ±2.0 (8× headroom) plus
-  NaN/Inf/denormal sanitation.
+- CrushClone uses a safety limiter at ±2.0 (8× headroom). The original clips at
+  ±0.9999; CrushJoints should follow the original, plus NaN/Inf/denormal
+  sanitation (see STATUS.md for the current state).
 
 ## 7. UI reference
 
@@ -344,19 +362,24 @@ bank.
    See [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md).
 4. **Logic Pro Phat FX** — Apple's integration of CamelPhat, the paid sibling.
    Not identical to CamelCrusher but architecturally related.
+5. **Black-box measurements** of the original plugin —
+   [MEASUREMENTS.md](MEASUREMENTS.md), produced with
+   [`tools/analysis/`](../tools/analysis/README.md). Highest-priority source for
+   behaviour.
 
 ## 10. DSP implementation targets
 
 ### Tube
 
-- Piecewise polynomial waveshaper with a 101-entry table.
+- Piecewise polynomial waveshaper with a 101-entry table, applied **after**
+  Mech.
 - Linear for `|x| ≤ 0.6`, quadratic saturation outside.
 - Asymmetric upper/lower coefficients.
 - Gain 1.0×–5.0× across the knob range.
 
 ### Mech
 
-- Piecewise linear waveshaper with a 101-entry table.
+- Piecewise linear waveshaper with a 101-entry table, applied **before** Tube.
 - Linear for `|x| ≤ 0.75`, linear saturation outside.
 - Asymmetric `+c`/`-c` offsets.
 - Gain 1.0×–11.0×.
@@ -365,7 +388,8 @@ bank.
 
 ### Filter
 
-- 24 dB/octave low-pass, 20 Hz–20 kHz.
+- 24 dB/octave low-pass (slope unverified), 80 Hz–16 kHz (measured display
+  range).
 - Resonance 0 to about 5, nonlinear at high settings.
 - ZDF/TPT SVF is the recommended model.
 
@@ -382,9 +406,9 @@ bank.
 
 ### Master
 
-- Hard safety limiter at ±2.0.
+- Hard clip at ±0.9999 when Master is on (measured); Master off is unclipped.
 - Denormal and NaN/Inf flushing.
-- Reference volume range -51 to 0 dB (current code uses -24 to +12 dB; see
+- Reference volume range −∞ to 0 dB (current code uses -24 to +12 dB; see
   [STATUS.md](STATUS.md)).
 - Dry/wet mix, default 100% wet.
 
@@ -422,6 +446,10 @@ Milestone 1:
   (0.615 → 1.0). `American Crunch`
   Mix is 1.0 in the original, so the earlier "Mix = 0 anomaly" was a Rebuilt
   data error.
+- **Black-box measurements (2026-10-28)** corrected the Tube/Mech order
+  (Mech first), the output limiter (hard clip at ±0.9999), the cutoff range
+  (80 Hz–16 kHz) and the volume range (−∞ to 0 dB); the reverse-camel tables
+  themselves were confirmed to ~1e-3. See [MEASUREMENTS.md](MEASUREMENTS.md).
 - **Manual cross-check (2026-10-28):** corrected the release year (2005, not
   2007), the format list (no AAX), the claim that the manual confirms the signal
   order, the filter slope, the cutoff range and the Phat description (none are in

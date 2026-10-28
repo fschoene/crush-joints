@@ -9,6 +9,7 @@ short and links here.
 | Document | Purpose |
 |----------|---------|
 | [RESEARCH.md](RESEARCH.md) | Background on CamelCrusher, the original DSP, UI and presets |
+| [MEASUREMENTS.md](MEASUREMENTS.md) | Black-box measurements of the original plugin (ground truth), made with `tools/analysis/` |
 | [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md) | External research: legacy identity, chunk format and original 20-preset bank |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Framework decision, project layout, parameters, build and GUI architecture |
 | [STATUS.md](STATUS.md) | What actually works today, verified build results and known gaps |
@@ -42,6 +43,8 @@ See [STATUS.md](STATUS.md) for the detailed breakdown.
 
 ## Documentation conventions
 
+- Measured behaviour of the original plugin ([MEASUREMENTS.md](MEASUREMENTS.md))
+  outranks secondary sources; if another document disagrees, fix that document.
 - Documents describe the **actual** repository state, not the intended state.
   Planned or missing behaviour is marked explicitly.
 - When the original CamelCrusher specification and the current code disagree,

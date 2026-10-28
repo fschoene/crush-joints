@@ -141,6 +141,23 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
 - Acceptance: mono works without host duplication and stereo results are
   unchanged in the offline tests.
 
+## Milestone 4c — Measurement-driven fidelity pass (v1 scope, in progress)
+
+**Status:** started 2026-10-28. Source of truth:
+[MEASUREMENTS.md](MEASUREMENTS.md), produced with
+[`tools/analysis/`](../tools/analysis/README.md).
+
+- [x] Black-box harness: offline x86_64 VST2 host plus Python scripts.
+- [ ] Distortion order: Mech → Tube (measured).
+- [ ] Output clip: hard clip at ±0.9999 (measured).
+- [ ] Cutoff: 80 Hz–16 kHz with the measured curve; fix the legacy preset
+      conversion.
+- [ ] Volume: −∞…0 dB with the measured table; decide how to treat the
+      CrushClone presets that use positive gain.
+- [ ] Measure and match the filter (response, resonance, level dependence).
+- [ ] Measure and match the compressor and Phat.
+- [ ] Add regression tests that compare against recorded measurements.
+
 ## Milestone 4 — Validation and release (pending)
 
 **Status:** not started.

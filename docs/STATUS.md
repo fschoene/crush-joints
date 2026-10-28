@@ -154,7 +154,18 @@ All processor tests passed.
 
 ## 5. Known gaps and deviations
 
-Ordered roughly by impact.
+Ordered roughly by impact. Items marked "measured" come from black-box
+measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
+
+0. **Fidelity gaps found by measurement (2026-10-28).**
+   - Distortion order is Tube → Mech here; the original runs **Mech → Tube**.
+   - The output limiter is ±2.0 here; the original **hard-clips at ±0.9999**.
+   - Cutoff spans 20 Hz–20 kHz here; the original spans **80 Hz–16 kHz** with a
+     custom curve. Legacy preset cutoffs use the wrong map.
+   - Volume spans −24…+12 dB here; the original spans **−∞…0 dB**.
+   - Compressor Amount is displayed by the original as 0…−40 dB; our threshold
+     curve ends at −30 dB.
+   - Filter and compressor internals are still unmeasured guesses.
 
 1. **No host validation yet.** `pluginval`, `auval` and DAW testing have not
    been run. Offline tests and a Standalone launch are the only verification.
@@ -168,9 +179,9 @@ Ordered roughly by impact.
    alone and respects locks, but it can set several parameters to their
    extremes at once. There is no "intelligent" constraint yet. Phat is also a
    deliberate deviation: it is audible at Amount 0, unlike CrushClone.
-5. **Master volume range differs from the reference.** The plugin uses
+5. **Master volume range differs from the original.** The plugin uses
    -24..+12 dB (CrushClone's range, required by presets such as MAS Loudener at
-   +2 dB) instead of the original -51..0 dB.
+   +2 dB) instead of the original −∞..0 dB (measured; no positive gain).
 6. **Filter and compressor are reference-inspired, not measured clones.** The
    SVF topology, Q range, compressor curve and Phat shelf numbers come from
    CrushClone rather than black-box measurement of the original; no public

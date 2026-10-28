@@ -31,6 +31,7 @@ crush-joints/
 ├── docs/                           # this documentation set
 │   ├── README.md
 │   ├── RESEARCH.md
+│   ├── MEASUREMENTS.md
 │   ├── ARCHITECTURE.md
 │   ├── STATUS.md
 │   ├── ROADMAP.md
@@ -52,6 +53,10 @@ crush-joints/
         ├── CamelCrusherCoeffs.h/.cpp  # reverse-camel coefficient tables
         └── Presets.h/.cpp             # CrushClone + legacy + user preset bank
 ```
+
+Black-box analysis of the original plugin lives in `tools/analysis/` (offline
+x86_64 VST2 host and Python scripts; see its README). It is not part of the
+plugin build.
 
 Tests live in `Tests/`:
 
@@ -169,8 +174,8 @@ binds to them by ID.
 
 Notes:
 
-- The research reference describes the original Master volume as -51–0 dB;
-  the implementation uses -24–+12 dB to match CrushClone's preset bank (some
+- The original Master volume is −∞…0 dB
+  ([MEASUREMENTS.md](MEASUREMENTS.md)); the implementation uses -24–+12 dB to match CrushClone's preset bank (some
   presets use positive gain). This is an intentional deviation, documented in
   [STATUS.md](STATUS.md).
 - The cutoff parameter is not skewed in the APVTS; the editor applies a
