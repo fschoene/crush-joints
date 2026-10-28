@@ -19,7 +19,7 @@ namespace CrushJoints
         float tube = 0.0f;
         float mech = 0.0f;
         bool tubeOn = true;
-        float cutoff = 20000.0f;
+        float cutoff = 16000.0f;
         float res = 0.0f;
         bool lpfOn = false;
         float amount = 0.0f;

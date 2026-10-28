@@ -5,9 +5,11 @@
 #include "DSP/Compressor.h"
 #include "DSP/Master.h"
 #include "Common/CamelCrusherCoeffs.h"
+#include "Common/CutoffCurve.h"
 #include "Common/Presets.h"
 
 #include <cmath>
+#include <complex>
 #include <vector>
 #include <iostream>
 #include <iterator>
@@ -33,17 +35,6 @@ namespace
             std::cerr << "FAIL: " << message
                       << " (expected " << expected << ", got " << actual << ")\n";
         }
-    }
-
-    float rms(const juce::AudioBuffer<float>& buffer, int channel = 0)
-    {
-        double sum = 0.0;
-        const auto* data = buffer.getReadPointer(channel);
-
-        for (int i = 0; i < buffer.getNumSamples(); ++i)
-            sum += static_cast<double>(data[i]) * data[i];
-
-        return static_cast<float>(std::sqrt(sum / juce::jmax(1, buffer.getNumSamples())));
     }
 
     // Independent implementation of the reverse-camel reference shapers, used
@@ -305,290 +296,348 @@ namespace
                            "distortion bypass");
     }
 
-    void testFilter()
+    void testCutoffCurve()
     {
-        constexpr double sampleRate = 48000.0;
+        // Values read from the original plugin's cutoff display (docs/MEASUREMENTS.md).
+        struct Point { float knob, hz; };
+        const Point points[] = {
+            { 0.00f, 80.0f }, { 0.10f, 262.0f }, { 0.25f, 577.0f }, { 0.50f, 1278.0f },
+            { 0.75f, 2476.0f }, { 0.90f, 4059.0f }, { 0.95f, 5258.0f }, { 0.99f, 8040.0f },
+            { 1.00f, 16000.0f },
+        };
+
+        for (const auto& point : points)
+        {
+            checkClose(CrushJoints::CutoffCurve::toHz(point.knob), point.hz, 1.0f,
+                       "cutoff curve at knob " + juce::String(point.knob));
+            checkClose(CrushJoints::CutoffCurve::toNormalised(point.hz), point.knob, 2.0e-3f,
+                       "cutoff curve inverse at " + juce::String(point.hz) + " Hz");
+        }
+
+        check(CrushJoints::CutoffCurve::toNormalised(10.0f) == 0.0f, "cutoff below range clamps");
+        check(CrushJoints::CutoffCurve::toNormalised(30000.0f) == 1.0f, "cutoff above range clamps");
+    }
+
+    // Magnitude of the bilinear 2-pole low-pass biquad (RBJ form) at a frequency.
+    float biquadGain(float cutoffHz, float q, float frequency, double sampleRate)
+    {
+        const double w0 = 2.0 * juce::MathConstants<double>::pi * cutoffHz / sampleRate;
+        const double alpha = std::sin(w0) / (2.0 * q);
+        const double c = std::cos(w0);
+        const double b0 = (1.0 - c) / 2.0, b1 = 1.0 - c, b2 = b0;
+        const double a0 = 1.0 + alpha, a1 = -2.0 * c, a2 = 1.0 - alpha;
+
+        const double w = 2.0 * juce::MathConstants<double>::pi * frequency / sampleRate;
+        const std::complex<double> z1 = std::polar(1.0, -w);
+        const std::complex<double> z2 = std::polar(1.0, -2.0 * w);
+        return static_cast<float>(std::abs((b0 + b1 * z1 + b2 * z2) / (a0 + a1 * z1 + a2 * z2)));
+    }
+
+    // Settled output/input RMS ratio of a sine through the filter.
+    float filterGain(float cutoffHz, float resonance, float frequency, float amplitude = 0.01f)
+    {
+        constexpr double sampleRate = 44100.0;
         constexpr int blockSize = 512;
         const int totalSamples = static_cast<int>(sampleRate);
 
-        juce::AudioBuffer<float> highTone(1, totalSamples);
-        auto* data = highTone.getWritePointer(0);
-
-        for (int i = 0; i < totalSamples; ++i)
-            data[i] = 0.5f * std::sin(2.0f * juce::MathConstants<float>::pi * 10000.0f
-                                      * static_cast<float>(i) / static_cast<float>(sampleRate));
-
-        const float inputRms = rms(highTone);
-
         CrushJoints::LadderFilter filter;
         filter.prepareToPlay(sampleRate, blockSize, 1);
-        filter.setCutoff(1000.0f);
-        filter.setResonance(0.0f);
+        filter.setCutoff(cutoffHz);
+        filter.setResonance(resonance);
         filter.setFilterOn(true);
 
-        // Process in blocks to mimic a host.
+        double inSum = 0.0;
+        double outSum = 0.0;
+
         for (int offset = 0; offset < totalSamples; offset += blockSize)
         {
             const int count = juce::jmin(blockSize, totalSamples - offset);
             juce::AudioBuffer<float> block(1, count);
-            block.copyFrom(0, 0, highTone, 0, offset, count);
+
+            for (int i = 0; i < count; ++i)
+                block.setSample(0, i, amplitude * std::sin(2.0f * juce::MathConstants<float>::pi * frequency
+                                                          * static_cast<float>(offset + i)
+                                                          / static_cast<float>(sampleRate)));
+            juce::AudioBuffer<float> input;
+            input.makeCopyOf(block);
+
             filter.processBlock(block);
-            highTone.copyFrom(0, offset, block, 0, 0, count);
+
+            if (offset >= totalSamples / 2)
+                for (int i = 0; i < count; ++i)
+                {
+                    inSum += static_cast<double>(input.getSample(0, i)) * input.getSample(0, i);
+                    outSum += static_cast<double>(block.getSample(0, i)) * block.getSample(0, i);
+                }
         }
 
-        const float outputRms = rms(highTone);
-        check(outputRms < inputRms * 0.05f, "low-pass attenuates 10 kHz strongly");
+        return static_cast<float>(std::sqrt(outSum / inSum));
+    }
+
+    void testFilter()
+    {
+        // The original is a linear 2-pole biquad with Q = 1 + 6 * resonance and the
+        // displayed Hz as the cutoff (docs/MEASUREMENTS.md section 5).
+        const float cutoffHz = 1278.0f;
+
+        for (float resonance : { 0.0f, 0.5f, 1.0f })
+        {
+            const float q = 1.0f + 6.0f * resonance;
+
+            for (float frequency : { 300.0f, 1278.0f, 2500.0f, 5000.0f, 9000.0f })
+            {
+                const float expected = biquadGain(cutoffHz, q, frequency, 44100.0);
+                const float actual = filterGain(cutoffHz, resonance, frequency);
+                check(std::abs(actual - expected) < 0.01f * expected + 1.0e-4f,
+                      "filter matches the bilinear biquad: res " + juce::String(resonance)
+                          + " at " + juce::String(frequency) + " Hz (expected "
+                          + juce::String(expected) + ", got " + juce::String(actual) + ")");
+            }
+
+            // At the cutoff a 2-pole low-pass has gain Q.
+            checkClose(filterGain(cutoffHz, resonance, cutoffHz), q, 0.03f * q, "gain at the cutoff equals Q");
+        }
+
+        // No saturation: the same gain at a much higher level.
+        checkClose(filterGain(cutoffHz, 1.0f, cutoffHz, 0.1f), filterGain(cutoffHz, 1.0f, cutoffHz, 0.001f),
+                   0.02f, "filter is linear");
 
         // Bypass must be transparent.
+        CrushJoints::LadderFilter filter;
+        filter.prepareToPlay(44100.0, 512, 1);
+        filter.setCutoff(500.0f);
+        filter.setFilterOn(false);
+
         juce::AudioBuffer<float> bypassBuffer(1, 256);
         for (int i = 0; i < 256; ++i)
             bypassBuffer.setSample(0, i, 0.25f * std::sin(0.1f * static_cast<float>(i)));
 
         juce::AudioBuffer<float> original;
         original.makeCopyOf(bypassBuffer);
-
-        filter.setFilterOn(false);
         filter.processBlock(bypassBuffer);
 
         for (int i = 0; i < 256; ++i)
-            checkClose(bypassBuffer.getSample(0, i), original.getSample(0, i), 0.0f,
-                       "filter bypass");
+            checkClose(bypassBuffer.getSample(0, i), original.getSample(0, i), 0.0f, "filter bypass");
     }
 
-    void testCompressor()
+    // Runs a constant input through the compressor (stereo, both channels equal)
+    // and returns the output samples. `blocks` of 512 samples at 44.1 kHz.
+    std::vector<float> processConstant(CrushJoints::Compressor& compressor, float value, int numSamples)
     {
-        constexpr double sampleRate = 48000.0;
-        constexpr int blockSize = 512;
-        const int totalSamples = static_cast<int>(sampleRate);
+        std::vector<float> out;
+        out.reserve(static_cast<size_t>(numSamples));
 
-        juce::AudioBuffer<float> buffer(2, totalSamples);
-
-        for (int ch = 0; ch < 2; ++ch)
-            for (int i = 0; i < totalSamples; ++i)
-                buffer.setSample(ch, i, 0.9f * std::sin(2.0f * juce::MathConstants<float>::pi
-                                                        * 220.0f * static_cast<float>(i)
-                                                        / static_cast<float>(sampleRate)));
-
-        CrushJoints::Compressor compressor;
-        compressor.prepareToPlay(sampleRate, blockSize, 2);
-        compressor.setAmount(1.0f);
-        compressor.setCompressorOn(true);
-        compressor.setPhatMode(false);
-
-        for (int offset = 0; offset < totalSamples; offset += blockSize)
+        for (int offset = 0; offset < numSamples; offset += 512)
         {
-            const int count = juce::jmin(blockSize, totalSamples - offset);
+            const int count = juce::jmin(512, numSamples - offset);
             juce::AudioBuffer<float> block(2, count);
-            for (int ch = 0; ch < 2; ++ch)
-                block.copyFrom(ch, 0, buffer, ch, offset, count);
-
-            compressor.processBlock(block);
 
             for (int ch = 0; ch < 2; ++ch)
                 for (int i = 0; i < count; ++i)
-                    check(std::isfinite(block.getSample(ch, i)), "compressor output is finite");
+                    block.setSample(ch, i, value);
+
+            compressor.processBlock(block);
+
+            for (int i = 0; i < count; ++i)
+                out.push_back(block.getSample(0, i));
         }
 
-        check(compressor.getGainReductionDb() < -5.0f, "compressor applies gain reduction");
-
-        // Bypass must be transparent.
-        juce::AudioBuffer<float> bypass(2, 128);
-        bypass.clear();
-        juce::AudioBuffer<float> original;
-        original.makeCopyOf(bypass);
-
-        compressor.setCompressorOn(false);
-        compressor.processBlock(bypass);
-
-        for (int ch = 0; ch < 2; ++ch)
-            for (int i = 0; i < 128; ++i)
-                checkClose(bypass.getSample(ch, i), original.getSample(ch, i), 0.0f,
-                           "compressor bypass");
+        return out;
     }
 
-    struct Tone
+    void configureCompressor(CrushJoints::Compressor& compressor, float amount, bool phat)
     {
-        float frequency;
-        float amplitude;
-    };
-
-    // Renders steady tones through the compressor (two seconds) and returns
-    // the settled second half of the left channel.
-    std::vector<float> renderCompressor(float amount, bool phat, const std::vector<Tone>& tones)
-    {
-        constexpr double sampleRate = 48000.0;
-        constexpr int blockSize = 512;
-        const int totalSamples = static_cast<int>(sampleRate) * 2;
-
-        CrushJoints::Compressor compressor;
-        compressor.prepareToPlay(sampleRate, blockSize, 2);
+        compressor.prepareToPlay(44100.0, 512, 2);
         compressor.setAmount(amount);
         compressor.setPhatMode(phat);
         compressor.setCompressorOn(true);
         compressor.reset();
-
-        std::vector<float> settled;
-
-        for (int offset = 0; offset < totalSamples; offset += blockSize)
-        {
-            juce::AudioBuffer<float> block(2, blockSize);
-
-            for (int i = 0; i < blockSize; ++i)
-            {
-                float v = 0.0f;
-
-                for (const auto& tone : tones)
-                    v += tone.amplitude * std::sin(2.0f * juce::MathConstants<float>::pi * tone.frequency
-                                                   * static_cast<float>(offset + i)
-                                                   / static_cast<float>(sampleRate));
-
-                block.setSample(0, i, v);
-                block.setSample(1, i, v);
-            }
-
-            compressor.processBlock(block);
-
-            if (offset >= totalSamples / 2)
-                for (int i = 0; i < blockSize; ++i)
-                    settled.push_back(block.getSample(0, i));
-        }
-
-        return settled;
     }
 
-    float rmsOf(const std::vector<float>& samples)
+    void testCompressorStaticCurve()
     {
-        double sum = 0.0;
-        for (float v : samples)
-            sum += static_cast<double>(v) * v;
+        // Settled outputs recorded from the original plugin for constant inputs
+        // (docs/MEASUREMENTS.md section 6). 0.5 s is long enough for the 48 ms / 80 ms
+        // follower to settle for every input here.
+        struct Row { float amount; float expected[7]; };
+        constexpr float inputs[7] = { 0.1f, 0.25f, 0.5f, 0.8f, 1.0f, 1.2f, 2.0f };
 
-        return static_cast<float>(std::sqrt(sum / static_cast<double>(samples.empty() ? 1 : samples.size())));
-    }
+        const Row rows[] = {
+            { 0.0f,  { 0.10000f, 0.25000f, 0.50000f, 0.80000f, 1.0f, 0.94203f, -0.44928f } },
+            { 0.5f,  { 0.19802f, 0.45443f, 0.75752f, 0.96120f, 1.0f, 0.96120f,  0.03009f } },
+            { 0.75f, { 0.33992f, 0.54161f, 0.79627f, 0.96740f, 1.0f, 0.96740f,  0.18509f } },
+            { 1.0f,  { 0.43762f, 0.60946f, 0.82642f, 0.97223f, 1.0f, 0.97223f,  0.30570f } },
+        };
 
-    // Single-bin DFT magnitude (the render holds a whole number of cycles).
-    float binMagnitude(const std::vector<float>& samples, float frequency)
-    {
-        constexpr double sampleRate = 48000.0;
-        double re = 0.0;
-        double im = 0.0;
+        for (const auto& row : rows)
+            for (int i = 0; i < 7; ++i)
+                for (bool phat : { false, true })
+                {
+                    CrushJoints::Compressor compressor;
+        configureCompressor(compressor, row.amount, phat);
+                    const auto out = processConstant(compressor, inputs[i], 44100 / 2);
+                    checkClose(out.back(), row.expected[i], 1.0e-3f,
+                               "compressor static curve, amount " + juce::String(row.amount)
+                                   + " input " + juce::String(inputs[i]) + (phat ? " phat" : ""));
+                }
 
-        for (size_t i = 0; i < samples.size(); ++i)
+        // Quiet input gets the full makeup: G = 1 / (1 - 0.99 * Amount).
+        for (float amount : { 0.25f, 0.5f, 0.9f, 1.0f })
         {
-            const double phase = 2.0 * juce::MathConstants<double>::pi * frequency
-                               * static_cast<double>(i) / sampleRate;
-            re += samples[i] * std::cos(phase);
-            im += samples[i] * std::sin(phase);
-        }
-
-        return static_cast<float>(2.0 * std::sqrt(re * re + im * im)
-                                  / static_cast<double>(samples.size()));
-    }
-
-    // Settled output/input RMS ratio of a single sine, in dB.
-    float compressorGainDb(float amount, bool phat, float frequency, float peak)
-    {
-        const auto out = renderCompressor(amount, phat, { { frequency, peak } });
-        return 20.0f * std::log10(rmsOf(out) / (peak / std::sqrt(2.0f)));
-    }
-
-    void testCompressorLevelBehaviour()
-    {
-        // Amount 0 is transparent.
-        checkClose(compressorGainDb(0.0f, false, 1000.0f, 0.5f), 0.0f, 0.01f,
-                   "compressor is transparent at Amount 0");
-
-        // Auto makeup follows the curve, so a low Amount is only a small lift
-        // for material below the threshold, never a big plain gain.
-        {
-            const float gain = compressorGainDb(0.25f, false, 1000.0f, 0.01f);
-            check(gain >= 0.0f && gain < 1.5f, "low Amount adds at most a small lift");
-        }
-
-        // Hot signals are squashed progressively harder.
-        float previous = 1.0f;
-        for (float amount : { 0.25f, 0.5f, 0.75f, 1.0f })
-        {
-            const float gain = compressorGainDb(amount, false, 1000.0f, 0.9f);
-            check(gain < previous, "hot signal is attenuated more at higher Amount");
-            previous = gain;
-        }
-
-        // Program-level material stays near its input level for moderate
-        // Amounts (makeup follows the compression curve).
-        for (float amount : { 0.25f, 0.5f, 0.75f })
-        {
-            const float gain = compressorGainDb(amount, false, 1000.0f, 0.3f);
-            check(gain > -1.5f && gain < 6.0f, "mid-level output stays near the input level");
-        }
-
-        // Quiet material is lifted more as Amount rises.
-        check(compressorGainDb(1.0f, false, 1000.0f, 0.05f)
-                  > compressorGainDb(0.5f, false, 1000.0f, 0.05f),
-              "quiet material is lifted more at higher Amount");
-    }
-
-    void testCompressorPhat()
-    {
-        // Bass plus treble at equal level: Phat must tilt the balance towards
-        // the bass at every Amount, and must not thin out loud material.
-        const std::vector<Tone> mix { { 50.0f, 0.15f }, { 2000.0f, 0.15f } };
-
-        for (float amount : { 0.0f, 0.5f, 1.0f })
-        {
-            const auto off = renderCompressor(amount, false, mix);
-            const auto on = renderCompressor(amount, true, mix);
-
-            const float balanceOff = 20.0f * std::log10(binMagnitude(off, 50.0f) / binMagnitude(off, 2000.0f));
-            const float balanceOn = 20.0f * std::log10(binMagnitude(on, 50.0f) / binMagnitude(on, 2000.0f));
-
-            std::cout << "Phat bass tilt at amount " << amount << ": " << (balanceOn - balanceOff) << " dB\n";
-            check(balanceOn > balanceOff + 1.0f, "Phat tilts the balance towards the bass");
-        }
-
-        // Phat does not make hot bass quieter than the plain compressor.
-        for (float amount : { 0.0f, 0.5f, 1.0f })
-            check(compressorGainDb(amount, true, 50.0f, 0.9f) > compressorGainDb(amount, false, 50.0f, 0.9f) - 1.0f,
-                  "Phat does not thin out hot bass");
-
-        // Toggling Phat and Amount while running stays finite and click-free.
-        {
-            constexpr double sampleRate = 48000.0;
             CrushJoints::Compressor compressor;
-            compressor.prepareToPlay(sampleRate, 256, 2);
-            compressor.setCompressorOn(true);
+        configureCompressor(compressor, amount, false);
+            const auto out = processConstant(compressor, 0.0004f, 4410);
+            checkClose(out.back() / 0.0004f, 1.0f / (1.0f - 0.99f * amount),
+                       0.003f * (1.0f / (1.0f - 0.99f * amount)), "compressor low-level gain");
+        }
+    }
 
-            float previousSample = 0.0f;
-            float maxStep = 0.0f;
-            int sampleIndex = 0;
+    // Output/input ratio of a constant step: `before` for 0.3 s, then `after`.
+    std::vector<float> stepGains(float amount, bool phat, float before, float after, int numSamples)
+    {
+        CrushJoints::Compressor compressor;
+        configureCompressor(compressor, amount, phat);
+        processConstant(compressor, before, 44100 * 3 / 10);
+        const auto out = processConstant(compressor, after, numSamples);
 
-            for (int block = 0; block < 200; ++block)
+        std::vector<float> gains;
+        for (float v : out)
+            gains.push_back(v / after);
+
+        return gains;
+    }
+
+    void testCompressorDynamics()
+    {
+        // Phat on: the gain falls at once and rises along a 0.25 ms ramp.
+        {
+            const auto g = stepGains(0.75f, true, 0.9f, 0.15f, 12);
+            const float expected[] = { 1.3543f, 1.6066f, 1.8589f, 2.1112f, 2.3635f, 2.6158f, 2.7415f, 2.7415f };
+            for (int i = 0; i < 8; ++i)
+                checkClose(g[static_cast<size_t>(i)], expected[i], 3.0e-3f, "Phat release ramp sample " + juce::String(i));
+
+            const auto g2 = stepGains(0.5f, true, 0.9f, 0.3f, 12);
+            const float expected2[] = { 1.1801f, 1.2599f, 1.3398f, 1.4196f, 1.4994f, 1.5792f, 1.6590f, 1.7388f, 1.7492f };
+            for (int i = 0; i < 9; ++i)
+                checkClose(g2[static_cast<size_t>(i)], expected2[i], 3.0e-3f, "Phat release ramp (amount 0.5) sample " + juce::String(i));
+
+            const auto attack = stepGains(0.75f, true, 0.15f, 0.9f, 4);
+            checkClose(attack[0], 1.1017f, 3.0e-3f, "Phat attack is instant");
+        }
+
+        // Phat off: the envelope follows at 1.0 per 48 ms up and 1.0 per 80 ms down.
+        {
+            const int atMs[] = { 1, 5, 10, 20, 40 };
+
+            const auto up = stepGains(0.75f, false, 0.3f, 0.9f, 44100 / 20);
+            const float expectedUp[] = { 1.9442f, 1.7580f, 1.5790f, 1.3035f, 1.1021f };
+            for (int i = 0; i < 5; ++i)
+                checkClose(up[static_cast<size_t>(44100 * atMs[i] / 1000)], expectedUp[i], 5.0e-3f,
+                           "slow attack at " + juce::String(atMs[i]) + " ms");
+
+            const auto down = stepGains(0.75f, false, 0.6f, 0.3f, 44100 / 20);
+            const float expectedDown[] = { 1.4665f, 1.5364f, 1.6329f, 1.8741f, 2.0023f };
+            for (int i = 0; i < 5; ++i)
+                checkClose(down[static_cast<size_t>(44100 * atMs[i] / 1000)], expectedDown[i], 5.0e-3f,
+                           "slow release at " + juce::String(atMs[i]) + " ms");
+        }
+
+        // Stereo link: a loud left channel also reduces the quiet right channel.
+        {
+            constexpr int numSamples = 44100 * 2;
+            CrushJoints::Compressor compressor;
+        configureCompressor(compressor, 0.75f, false);
+            double rightIn = 0.0;
+            double rightOut = 0.0;
+
+            for (int offset = 0; offset < numSamples; offset += 512)
             {
-                compressor.setPhatMode((block / 20) % 2 == 1);
-                compressor.setAmount(static_cast<float>(block % 50) / 50.0f);
+                juce::AudioBuffer<float> block(2, 512);
 
-                juce::AudioBuffer<float> buffer(2, 256);
-                for (int i = 0; i < 256; ++i, ++sampleIndex)
+                for (int i = 0; i < 512; ++i)
                 {
-                    const float v = 0.4f * std::sin(2.0f * juce::MathConstants<float>::pi * 60.0f
-                                                    * static_cast<float>(sampleIndex)
-                                                    / static_cast<float>(sampleRate));
-                    buffer.setSample(0, i, v);
-                    buffer.setSample(1, i, v);
+                    const float t = static_cast<float>(offset + i) / 44100.0f;
+                    block.setSample(0, i, 0.5f * std::sin(2.0f * juce::MathConstants<float>::pi * 500.0f * t));
+                    block.setSample(1, i, 0.02f * std::sin(2.0f * juce::MathConstants<float>::pi * 730.0f * t));
                 }
 
-                compressor.processBlock(buffer);
+                juce::AudioBuffer<float> input;
+                input.makeCopyOf(block);
+                compressor.processBlock(block);
 
-                for (int i = 0; i < 256; ++i)
-                {
-                    const float v = buffer.getSample(0, i);
-                    check(std::isfinite(v), "compressor output stays finite while automated");
-                    maxStep = juce::jmax(maxStep, std::abs(v - previousSample));
-                    previousSample = v;
-                }
+                if (offset >= numSamples / 2)
+                    for (int i = 0; i < 512; ++i)
+                    {
+                        rightIn += static_cast<double>(input.getSample(1, i)) * input.getSample(1, i);
+                        rightOut += static_cast<double>(block.getSample(1, i)) * block.getSample(1, i);
+                    }
             }
 
-            check(maxStep < 0.1f, "automating Amount/Phat does not click");
+            checkClose(static_cast<float>(10.0 * std::log10(rightOut / rightIn)), 4.80f, 0.05f,
+                       "compressor is stereo linked");
         }
+
+        // Switching the module on starts from unity gain and fades the amount in.
+        {
+            CrushJoints::Compressor compressor;
+        configureCompressor(compressor, 0.75f, false);
+            processConstant(compressor, 0.3f, 22050);
+            compressor.setCompressorOn(false);
+            const auto bypassed = processConstant(compressor, 0.3f, 512);
+            checkClose(bypassed.back(), 0.3f, 0.0f, "compressor bypass is exact");
+
+            compressor.setCompressorOn(true);
+            const auto out = processConstant(compressor, 0.3f, 44100 / 10);
+            check(out.front() / 0.3f < 1.05f, "compressor fades in from unity gain");
+            checkClose(out.back() / 0.3f, 2.0023f, 0.01f, "compressor settles after switching on");
+        }
+    }
+
+    void testCompressorBoom()
+    {
+        // The Boom stage is hidden: off by default, and when on it adds the
+        // low-shelf parallel leg (finite, different, and louder in the bass).
+        constexpr int numSamples = 44100;
+        std::vector<float> plain;
+        std::vector<float> boom;
+
+        for (bool on : { false, true })
+        {
+            CrushJoints::Compressor compressor;
+        configureCompressor(compressor, 0.5f, false);
+            compressor.setBoomMode(on);
+            compressor.reset();
+
+            auto& target = on ? boom : plain;
+
+            for (int offset = 0; offset < numSamples; offset += 512)
+            {
+                juce::AudioBuffer<float> block(2, 512);
+
+                for (int ch = 0; ch < 2; ++ch)
+                    for (int i = 0; i < 512; ++i)
+                        block.setSample(ch, i, 0.1f * std::sin(2.0f * juce::MathConstants<float>::pi * 60.0f
+                                                               * static_cast<float>(offset + i) / 44100.0f));
+
+                compressor.processBlock(block);
+
+                for (int i = 0; i < 512; ++i)
+                {
+                    check(std::isfinite(block.getSample(0, i)), "boom output is finite");
+                    target.push_back(block.getSample(0, i));
+                }
+            }
+        }
+
+        const auto tailRms = [](const std::vector<float>& v)
+        {
+            double sum = 0.0;
+            for (size_t i = v.size() / 2; i < v.size(); ++i)
+                sum += static_cast<double>(v[i]) * v[i];
+            return std::sqrt(sum / static_cast<double>(v.size() / 2));
+        };
+
+        check(tailRms(boom) > tailRms(plain) * 1.05, "boom adds low-end level");
     }
 
     void testMaster()
@@ -709,7 +758,7 @@ namespace
                       "legacy preset name " + juce::String(i));
                 check(legacyPreset.category == CrushJoints::PresetCategory::legacy,
                       "legacy preset category " + juce::String(i));
-                check(legacyPreset.cutoff >= 20.0f && legacyPreset.cutoff <= 20000.0f,
+                check(legacyPreset.cutoff >= 80.0f && legacyPreset.cutoff <= 16000.0f,
                       "legacy preset cutoff range " + juce::String(i));
                 check(legacyPreset.volume >= -24.0f && legacyPreset.volume <= 12.0f,
                       "legacy preset volume range " + juce::String(i));
@@ -722,13 +771,21 @@ namespace
             check(annihilate.phat, "Annihilate Phat is on");
             checkClose(annihilate.amount, 0.905f, 1.0e-6f, "Annihilate amount");
 
+            // Cutoff and volume knobs use the measured laws of the original:
+            // cutoff curve (80 Hz .. 16 kHz) and linear gain = knob ^ 2.737.
+            checkClose(annihilate.cutoff, 824.0f, 1.0f, "Annihilate cutoff (knob 0.35)");
+            checkClose(annihilate.volume, -5.9067f, 0.01f, "Annihilate volume (knob 0.78)");
+            checkClose(presets.getPreset(18).cutoff, 402.0f, 1.0f, "Bass Maker cutoff (knob 0.17)");
+            check(presets.getPreset(18).name == "Bass Maker", "Bass Maker position");
+            checkClose(presets.getPreset(31).volume, -13.9974f, 0.01f, "Turn it to 11 volume (knob 0.555)");
+
             const auto americanCrunch = presets.getPreset(13);
             check(americanCrunch.name == "American Crunch", "American Crunch name");
             checkClose(americanCrunch.mix, 1.0f, 1.0e-6f, "American Crunch mix matches the factory FXB (100% wet)");
 
             const auto britishClean = presets.getPreset(15);
             check(britishClean.name == "British Clean", "British Clean name");
-            checkClose(britishClean.cutoff, 20000.0f, 1.0e-3f, "British Clean open cutoff");
+            checkClose(britishClean.cutoff, 16000.0f, 1.0e-3f, "British Clean open cutoff (knob 1.0)");
             check(! britishClean.phat, "British Clean Phat is off");
             checkClose(britishClean.mix, 1.0f, 1.0e-6f, "British Clean mix matches the factory FXB (100% wet)");
 
@@ -794,10 +851,11 @@ int main()
     testDistortionMatchesOriginalMeasurements();
     testReferenceAudioPath();
     testDistortionTransparencyAndBypass();
+    testCutoffCurve();
     testFilter();
-    testCompressor();
-    testCompressorLevelBehaviour();
-    testCompressorPhat();
+    testCompressorStaticCurve();
+    testCompressorDynamics();
+    testCompressorBoom();
     testMaster();
     testPresets();
 

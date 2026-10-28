@@ -3,6 +3,9 @@
 #include <juce_graphics/juce_graphics.h>
 
 #include "PluginProcessor.h"
+#include "DSP/Distortion.h"
+#include "DSP/LadderFilter.h"
+#include "DSP/Master.h"
 
 #include <iostream>
 #include <cstdlib>
@@ -303,6 +306,78 @@ namespace
         }
     }
 
+    // The original runs Mech -> Filter -> Tube -> Compressor (docs/MEASUREMENTS.md
+    // section 7). The processor must match that chain built by hand.
+    void testSignalChainOrder()
+    {
+        constexpr double sampleRate = 44100.0;
+        constexpr int numSamples = 44100;
+        constexpr int blockSize = 512;
+
+        juce::AudioBuffer<float> input(2, numSamples);
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < numSamples; ++i)
+            {
+                const float t = static_cast<float>(i) / static_cast<float>(sampleRate);
+                input.setSample(ch, i, 0.2f * std::sin(2.0f * juce::MathConstants<float>::pi * 200.0f * t)
+                                           + 0.2f * std::sin(2.0f * juce::MathConstants<float>::pi * 3000.0f * t));
+            }
+
+        CrushJointsAudioProcessor processor;
+        processor.prepareToPlay(sampleRate, blockSize);
+        setValue(processor, "tube", 0.6f);
+        setValue(processor, "mech", 0.4f);
+        setValue(processor, "tube_on", 1.0f);
+        setValue(processor, "cutoff", 1278.0f);
+        setValue(processor, "res", 0.6f);
+        setValue(processor, "lpf_on", 1.0f);
+        setValue(processor, "comp_on", 0.0f);
+        setValue(processor, "mix", 1.0f);
+        setValue(processor, "volume", -6.0f);
+        setValue(processor, "master_on", 1.0f);
+
+        const auto actual = renderProcessor(processor, input);
+
+        CrushJoints::Distortion distortion;
+        CrushJoints::LadderFilter filter;
+        CrushJoints::Master master;
+        distortion.prepareToPlay(sampleRate);
+        filter.prepareToPlay(sampleRate, blockSize, 2);
+        master.prepareToPlay(sampleRate, blockSize, 2);
+        distortion.setTubeAmount(0.6f);
+        distortion.setMechAmount(0.4f);
+        distortion.setTubeOn(true);
+        filter.setCutoff(1278.0f);
+        filter.setResonance(0.6f);
+        filter.setFilterOn(true);
+        master.setVolume(-6.0f);
+        master.setMix(1.0f);
+        master.setMasterOn(true);
+
+        float maxDifference = 0.0f;
+
+        for (int offset = 0; offset < numSamples; offset += blockSize)
+        {
+            const int count = juce::jmin(blockSize, numSamples - offset);
+            juce::AudioBuffer<float> block(2, count);
+
+            for (int ch = 0; ch < 2; ++ch)
+                block.copyFrom(ch, 0, input, ch, offset, count);
+
+            distortion.processMech(block);
+            filter.processBlock(block);
+            distortion.processTube(block);
+            master.processBlock(block, nullptr);
+
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < count; ++i)
+                    maxDifference = juce::jmax(maxDifference,
+                                               std::abs(block.getSample(ch, i) - actual.getSample(ch, offset + i)));
+        }
+
+        checkClose(maxDifference, 0.0f, 1.0e-5f, "processor chain is Mech -> Filter -> Tube");
+    }
+
     void testLegacyPresets()
     {
         CrushJointsAudioProcessor processor;
@@ -562,6 +637,7 @@ int main()
     testABComparison();
     testProgramsAndState();
     testProcessorDspWiring();
+    testSignalChainOrder();
     testLegacyPresets();
     testMonoStereoLayouts();
     testParameterLocksAndRandomize();

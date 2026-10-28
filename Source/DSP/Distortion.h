@@ -5,12 +5,13 @@
 namespace CrushJoints
 {
     /**
-        Tube + Mech distortion, following the reverse-camel black-box analysis.
+        Tube + Mech distortion, using the reverse-camel coefficient tables.
 
-        The two stages run in series exactly like the reference implementation:
-        the input is shaped by the Tube table, then the result is shaped by the
-        Mech table. Both stages are always active; at amount 0 their table
-        entries are near-linear, so the stage is effectively transparent.
+        The original runs the stages in the order Mech, then Tube, and its
+        Filter sits between them (docs/MEASUREMENTS.md section 7), so the two
+        stages are exposed separately. processBlock() runs both back to back
+        for use without a filter. At amount 0 the table entries are
+        near-linear, so a stage is effectively transparent.
     */
     class Distortion
     {
@@ -21,8 +22,10 @@ namespace CrushJoints
         void prepareToPlay(double sampleRate);
         void reset();
         void processBlock(juce::AudioBuffer<float>& buffer);
+        void processMech(juce::AudioBuffer<float>& buffer);
+        void processTube(juce::AudioBuffer<float>& buffer);
 
-        // Set parameters (normalised 0..1)
+        // Set parameters (normalised 0..1); the "on" switch covers both stages.
         void setTubeAmount(float amount);
         void setMechAmount(float amount);
         void setTubeOn(bool on);

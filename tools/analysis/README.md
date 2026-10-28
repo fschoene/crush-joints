@@ -36,6 +36,8 @@ not find it. The VST2 bundle loads directly through `CFBundle`.
 | `measure_comp_curve.py` | Measures the compressor's `c(Amount)` table into `data/` |
 | `check_compressor.py` | Compares the model with the plugin on seven signals, Phat off and on |
 | `check_chain.py` | Tests all 24 stage orders and the module-switch combinations |
+| `cjrender.cpp` | Offline renderer for the CrushJoints chain (built with `-DCRUSHJOINTS_BUILD_TOOLS=ON`) |
+| `compare_clone.py` | A/B of CrushJoints against the original on random settings |
 | `measure_mappings.py` | Real Volume gain and Cutoff frequency at 101 knob positions |
 | `dump_param_displays.py` | Cutoff/Volume/Amount display strings to `data/` |
 | `fxb_compare.py` | Parse the original `CamelCrusherPresetsA.fxb` and diff it against `Presets.cpp` |
@@ -51,6 +53,7 @@ python3 dump_param_displays.py
 python3 measure_comp_curve.py
 python3 check_compressor.py
 python3 check_chain.py
+python3 compare_clone.py   # needs: cmake -B build -DCRUSHJOINTS_BUILD_TOOLS=ON && cmake --build build
 python3 fxb_compare.py /path/to/CamelCrusherPresetsA.fxb
 arch -x86_64 build/vsthost info
 ```

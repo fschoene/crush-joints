@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "CutoffCurve.h"
 #include <cmath>
 
 //==============================================================================
@@ -15,7 +16,14 @@ CrushJointsAudioProcessor::CrushJointsAudioProcessor(juce::File userPresetFile)
                 std::make_unique<juce::AudioParameterBool>("tube_on", "Distortion On", true),
                 
                 // Filter parameters
-                std::make_unique<juce::AudioParameterFloat>("cutoff", "Cutoff", 20.0f, 20000.0f, 20000.0f),
+                // The knob follows the original's cutoff curve (80 Hz .. 16 kHz).
+                std::make_unique<juce::AudioParameterFloat>(
+                    "cutoff", "Cutoff",
+                    juce::NormalisableRange<float>(
+                        CrushJoints::CutoffCurve::kMinHz, CrushJoints::CutoffCurve::kMaxHz,
+                        [](float, float, float proportion) { return CrushJoints::CutoffCurve::toHz(proportion); },
+                        [](float, float, float hz) { return CrushJoints::CutoffCurve::toNormalised(hz); }),
+                    CrushJoints::CutoffCurve::kMaxHz),
                 std::make_unique<juce::AudioParameterFloat>("res", "Resonance", 0.0f, 1.0f, 0.0f),
                 std::make_unique<juce::AudioParameterBool>("lpf_on", "Filter On", false),
                 
@@ -192,9 +200,11 @@ void CrushJointsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         dryBuffer.makeCopyOf(buffer, true);
     }
 
-    // Complete signal chain: Distortion -> Filter -> Compressor -> Master
-    distortion.processBlock(buffer);
+    // Complete signal chain, as measured on the original:
+    // Mech -> Filter -> Tube -> Compressor -> Master
+    distortion.processMech(buffer);
     filter.processBlock(buffer);
+    distortion.processTube(buffer);
     compressor.processBlock(buffer);
     master.processBlock(buffer, needsDrySignal ? &dryBuffer : nullptr);
 }
@@ -387,9 +397,8 @@ void CrushJointsAudioProcessor::randomizeUnlockedParameters()
 
     if (! isParameterLocked(lockableCutoff))
     {
-        // Logarithmic sweep from 200 Hz to 18 kHz.
-        const float cutoff = 200.0f * std::pow(90.0f, random.nextFloat());
-        cutoffParam->setValueNotifyingHost(cutoffParam->convertTo0to1(cutoff));
+        // Random knob position, avoiding the very bottom where the filter is nearly closed.
+        cutoffParam->setValueNotifyingHost(0.15f + 0.85f * random.nextFloat());
     }
 
     randomiseNormally(lockableRes, resParam);

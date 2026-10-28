@@ -74,6 +74,7 @@ target_sources(CrushJoints
         Source/DSP/Compressor.cpp
         Source/DSP/Master.cpp
         Source/Common/CamelCrusherCoeffs.cpp
+        Source/Common/CutoffCurve.cpp
         Source/Common/Presets.cpp
 )
 
@@ -107,6 +108,7 @@ if(CRUSHJOINTS_BUILD_TESTS)
             Source/DSP/Compressor.cpp
             Source/DSP/Master.cpp
             Source/Common/CamelCrusherCoeffs.cpp
+            Source/Common/CutoffCurve.cpp
             Source/Common/Presets.cpp
     )
 
@@ -152,6 +154,7 @@ if(CRUSHJOINTS_BUILD_TESTS)
             Source/DSP/Master.cpp
             Source/DSP/Oversampler.cpp
             Source/Common/CamelCrusherCoeffs.cpp
+            Source/Common/CutoffCurve.cpp
             Source/Common/Presets.cpp
     )
 
@@ -169,6 +172,49 @@ if(CRUSHJOINTS_BUILD_TESTS)
             juce::juce_dsp
             juce::juce_gui_basics
             juce::juce_gui_extra
+            juce::juce_audio_basics
+            juce::juce_core
+        PUBLIC
+            juce::juce_recommended_config_flags
+            juce::juce_recommended_warning_flags
+    )
+endif()
+
+#==============================================================================
+# Offline renderer used by tools/analysis to compare the DSP chain with the original
+option(CRUSHJOINTS_BUILD_TOOLS "Build the offline renderer used by tools/analysis" OFF)
+
+if(CRUSHJOINTS_BUILD_TOOLS)
+    juce_add_console_app(CrushJointsRender PRODUCT_NAME "cjrender")
+
+    target_compile_definitions(CrushJointsRender
+        PRIVATE
+            JUCE_WEB_BROWSER=0
+            JUCE_USE_CURL=0
+            JUCE_STRICT_MODE=1
+    )
+
+    target_sources(CrushJointsRender
+        PRIVATE
+            tools/analysis/cjrender.cpp
+            Source/DSP/Distortion.cpp
+            Source/DSP/LadderFilter.cpp
+            Source/DSP/Compressor.cpp
+            Source/DSP/Master.cpp
+            Source/Common/CamelCrusherCoeffs.cpp
+            Source/Common/CutoffCurve.cpp
+    )
+
+    target_include_directories(CrushJointsRender
+        PRIVATE
+            Source
+            Source/DSP
+            Source/Common
+    )
+
+    target_link_libraries(CrushJointsRender
+        PRIVATE
+            juce::juce_dsp
             juce::juce_audio_basics
             juce::juce_core
         PUBLIC

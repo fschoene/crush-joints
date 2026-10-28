@@ -92,14 +92,12 @@ namespace CrushJoints
     }
 
     //==============================================================================
-    void Distortion::processBlock(juce::AudioBuffer<float>& buffer)
+    void Distortion::processMech(juce::AudioBuffer<float>& buffer)
     {
         if (! tubeOn)
             return;
 
-        const auto tubeCoeffs = getTubeCoeffs(tubeAmount);
-        const auto mechCoeffs = getMechCoeffs(mechAmount);
-
+        const auto coeffs = getMechCoeffs(mechAmount);
         const int numChannels = juce::jmin(buffer.getNumChannels(), 2);
         const int numSamples = buffer.getNumSamples();
 
@@ -107,13 +105,34 @@ namespace CrushJoints
         {
             float* data = buffer.getWritePointer(ch);
 
-            // Measured on the original: Mech runs first, Tube second.
             for (int i = 0; i < numSamples; ++i)
-            {
-                const float mechOut = shapeMech(data[i], mechCoeffs);
-                data[i] = shapeTube(mechOut, tubeCoeffs);
-            }
+                data[i] = shapeMech(data[i], coeffs);
         }
+    }
+
+    void Distortion::processTube(juce::AudioBuffer<float>& buffer)
+    {
+        if (! tubeOn)
+            return;
+
+        const auto coeffs = getTubeCoeffs(tubeAmount);
+        const int numChannels = juce::jmin(buffer.getNumChannels(), 2);
+        const int numSamples = buffer.getNumSamples();
+
+        for (int ch = 0; ch < numChannels; ++ch)
+        {
+            float* data = buffer.getWritePointer(ch);
+
+            for (int i = 0; i < numSamples; ++i)
+                data[i] = shapeTube(data[i], coeffs);
+        }
+    }
+
+    // Measured on the original: Mech runs first, Tube second.
+    void Distortion::processBlock(juce::AudioBuffer<float>& buffer)
+    {
+        processMech(buffer);
+        processTube(buffer);
     }
 
     void Distortion::setTubeAmount(float amount)

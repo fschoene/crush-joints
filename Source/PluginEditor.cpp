@@ -157,10 +157,10 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
     addToContent(filterGroup);
 
     configureKnob(cutoffSlider, "Cutoff frequency");
-    configureKnob(resSlider, "Resonance (most audible below 18 kHz)");
+    configureKnob(resSlider, "Resonance");
+    cutoffSlider.setNumDecimalPlacesToDisplay(0);
     configureLabel(cutoffLabel, "CUTOFF");
     configureLabel(resLabel, "RES");
-    cutoffSlider.setSkewFactorFromMidPoint(1000.0);
     addToContent(cutoffSlider);
     addToContent(resSlider);
     addToContent(cutoffLabel);

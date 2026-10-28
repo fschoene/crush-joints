@@ -8,8 +8,8 @@ Per sample, stereo-linked:
     gt  = G                        for env <= e0
           P(env) / env             above, with P(e) = 1 - c(Amount) (1 - e)^2
           G = 1 / (1 - 0.99 Amount); e0 = larger root of G e = P(e)
-    g   = gain ramp: falls instantly to gt; rises at most (G - g_anchor) / N per sample
-          (N = 0.25 ms, slope frozen while limited, recomputed whenever g == gt)
+    g   = gain ramp: falls instantly to gt; rises at most (G - anchor) / N per sample
+          (N = 0.25 ms; anchor = the gain at the last sample where g == gt)
     out = clamped input * g
 c(Amount) is measured (data/comp_c_of_amount.tsv, produced by measure_comp_curve.py).
 """
@@ -44,7 +44,7 @@ def process(x, amount, sr=44100, phat=False, attack_s=ATTACK_S, release_s=RELEAS
     N = ramp_s * sr
     m = np.max(np.abs(x), axis=1)
     out = np.empty_like(x)
-    env, g, inc = 0.0, G, None
+    env, g, anchor = 0.0, G, G
     for n in range(len(m)):
         if phat:
             env = m[n]
@@ -53,13 +53,11 @@ def process(x, amount, sr=44100, phat=False, attack_s=ATTACK_S, release_s=RELEAS
         else:
             env = max(m[n], env - down)
         gt = G if env <= e0 else (1.0 - c * (1.0 - env) ** 2) / env
-        step = (G - g) / N if inc is None else inc
+        step = (G - anchor) / N
         if gt <= g + step:
             g = gt
-            inc = None
+            anchor = g
         else:
-            if inc is None:
-                inc = step
-            g += inc
+            g += step
         out[n] = x[n] * g
     return out

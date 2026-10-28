@@ -1,5 +1,7 @@
 #include "Presets.h"
 
+#include "CutoffCurve.h"
+
 #include <cmath>
 
 namespace CrushJoints
@@ -24,8 +26,8 @@ namespace CrushJoints
 
         // Original 20-program factory bank. Values are the normalized VST2
         // parameters from the original CamelCrusherPresetsA.fxb (verified
-        // 2026-10-28); the cutoff/volume mappings are provisional and
-        // documented in docs/CAMELCRUSHER_REBUILT.md.
+        // 2026-10-28); the cutoff and volume knob laws were measured on the
+        // original (docs/MEASUREMENTS.md).
         constexpr LegacyPresetData kLegacyPresets[] = {
             { "Annihilate",        1, 0.000f, 0.340f, 0, 0.350f, 0.050f, 1, 0.905f, 1, 1.000f, 0.780f },
             { "American Crunch",   1, 0.280f, 1.000f, 1, 1.000f, 0.475f, 1, 0.815f, 1, 1.000f, 0.655f },
@@ -51,26 +53,22 @@ namespace CrushJoints
 
         float legacyCutoffToHz(float normalized)
         {
-            // Provisional mapping: 20 Hz .. 20 kHz, exponential.
-            return juce::jlimit(20.0f, 20000.0f,
-                                20.0f * std::pow(1000.0f, juce::jlimit(0.0f, 1.0f, normalized)));
+            // The original knob curve, 80 Hz .. 16 kHz (docs/MEASUREMENTS.md).
+            return CutoffCurve::toHz(normalized);
         }
 
         float legacyVolumeToDb(float normalized)
         {
-            // Reverse-camel's documented stepped master-volume mapping.
-            static constexpr float decibels[] = {
-                -60.0f, -55.0f, -38.0f, -29.0f, -22.0f, -16.0f,
-                -12.0f, -8.0f, -5.0f, -3.0f, 0.0f
-            };
+            // Measured on the original: linear gain = knob ^ 2.737 (knob 0.5 is 0.15).
+            // The original tops out at 0 dB; our -24..+12 dB range contains it. The
+            // 20 factory presets use knob values of 0.555 or more (-14.3 dB and up).
+            constexpr float kExponent = 2.737f;
+            const float knob = juce::jlimit(0.0f, 1.0f, normalized);
 
-            const float position = juce::jlimit(0.0f, 1.0f, normalized) * 10.0f;
-            const int index0 = juce::jlimit(0, 10, static_cast<int>(position));
-            const int index1 = juce::jmin(index0 + 1, 10);
-            const float fraction = position - static_cast<float>(index0);
-            const float db = decibels[index0] + (decibels[index1] - decibels[index0]) * fraction;
+            if (knob <= 0.0f)
+                return -24.0f;
 
-            return juce::jlimit(-24.0f, 12.0f, db);
+            return juce::jlimit(-24.0f, 12.0f, 20.0f * kExponent * std::log10(knob));
         }
     }
 
@@ -81,7 +79,7 @@ namespace CrushJoints
             0.0f,               // tube
             0.0f,               // mech 
             true,               // tubeOn
-            20000.0f,           // cutoff
+            16000.0f,           // cutoff
             0.0f,               // res
             false,              // lpfOn
             0.0f,               // amount
@@ -493,7 +491,7 @@ namespace CrushJoints
             preset.tube = juce::jlimit(0.0f, 1.0f, static_cast<float>(element->getDoubleAttribute("tube", 0.0)));
             preset.mech = juce::jlimit(0.0f, 1.0f, static_cast<float>(element->getDoubleAttribute("mech", 0.0)));
             preset.tubeOn = element->getBoolAttribute("tubeOn", true);
-            preset.cutoff = juce::jlimit(20.0f, 20000.0f, static_cast<float>(element->getDoubleAttribute("cutoff", 20000.0)));
+            preset.cutoff = juce::jlimit(CutoffCurve::kMinHz, CutoffCurve::kMaxHz, static_cast<float>(element->getDoubleAttribute("cutoff", CutoffCurve::kMaxHz)));
             preset.res = juce::jlimit(0.0f, 1.0f, static_cast<float>(element->getDoubleAttribute("res", 0.0)));
             preset.lpfOn = element->getBoolAttribute("lpfOn", false);
             preset.amount = juce::jlimit(0.0f, 1.0f, static_cast<float>(element->getDoubleAttribute("amount", 0.0)));

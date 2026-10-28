@@ -1,13 +1,14 @@
 #include "LadderFilter.h"
+#include "CutoffCurve.h"
+
+#include <cmath>
 
 namespace CrushJoints
 {
     namespace
     {
-        constexpr float kMinResonance = 0.7071f;
-        constexpr float kMaxResonance = 4.2071f; // 0.7071 + 3.5
-        constexpr float kBypassCutoff = 18000.0f;
-        constexpr float kBypassResonance = 0.05f;
+        constexpr float kSmoothingSeconds = 0.010f;
+        constexpr float kMaxCutoffRatio = 0.45f; // of the sample rate
     }
 
     LadderFilter::LadderFilter()
@@ -18,56 +19,104 @@ namespace CrushJoints
     {
     }
 
-    void LadderFilter::prepareToPlay(double newSampleRate, int samplesPerBlock, int newNumChannels)
+    void LadderFilter::prepareToPlay(double newSampleRate, int /*samplesPerBlock*/, int newNumChannels)
     {
         sampleRate = newSampleRate;
         numChannels = juce::jlimit(1, 2, newNumChannels);
 
-        juce::dsp::ProcessSpec spec;
-        spec.sampleRate = sampleRate;
-        spec.maximumBlockSize = static_cast<juce::uint32>(juce::jmax(1, samplesPerBlock));
-        spec.numChannels = static_cast<juce::uint32>(numChannels);
+        smoothedCutoff.reset(sampleRate, kSmoothingSeconds);
+        smoothedResonance.reset(sampleRate, kSmoothingSeconds);
 
-        filter.prepare(spec);
-        filter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
-        filter.setCutoffFrequency(juce::jlimit(20.0f, static_cast<float>(sampleRate * 0.45), cutoff));
-        filter.setResonance(kMinResonance);
-        filter.reset();
+        reset();
     }
 
     void LadderFilter::reset()
     {
-        filter.reset();
+        ic1eq.fill(0.0f);
+        ic2eq.fill(0.0f);
+        needsSnap = true;
+    }
+
+    void LadderFilter::snapToTargets()
+    {
+        smoothedCutoff.setCurrentAndTargetValue(CutoffCurve::toNormalised(cutoff));
+        smoothedResonance.setCurrentAndTargetValue(resonance);
+        needsSnap = false;
+    }
+
+    LadderFilter::Coefficients LadderFilter::makeCoefficients(float cutoffNormalised, float res) const
+    {
+        const float hz = juce::jmin(CutoffCurve::toHz(cutoffNormalised),
+                                    static_cast<float>(sampleRate) * kMaxCutoffRatio);
+        const float g = std::tan(juce::MathConstants<float>::pi * hz / static_cast<float>(sampleRate));
+        const float k = 1.0f / (1.0f + 6.0f * res); // 1 / Q, Q = 1 + 6 * resonance
+
+        Coefficients c;
+        c.a1 = 1.0f / (1.0f + g * (g + k));
+        c.a2 = g * c.a1;
+        c.a3 = g * c.a2;
+        return c;
     }
 
     void LadderFilter::processBlock(juce::AudioBuffer<float>& buffer)
     {
         if (! filterOn)
+        {
+            wasOn = false;
             return;
+        }
 
-        // Wide-open filter with no resonance is inaudible; skip the work and
-        // avoid numerical edge cases at 20 kHz.
-        if (cutoff >= kBypassCutoff && resonance < kBypassResonance)
-            return;
+        if (! wasOn)
+        {
+            // Switching the filter on starts from a cleared state.
+            ic1eq.fill(0.0f);
+            ic2eq.fill(0.0f);
+            wasOn = true;
+        }
 
-        const float maxSafeCutoff = static_cast<float>(sampleRate * 0.4);
-        const float safeCutoff = juce::jlimit(20.0f, maxSafeCutoff, cutoff);
-        const float safeResonance = juce::jmap(resonance, 0.0f, 1.0f, kMinResonance, kMaxResonance);
+        if (needsSnap)
+            snapToTargets();
 
-        filter.setCutoffFrequency(safeCutoff);
-        filter.setResonance(safeResonance);
+        smoothedCutoff.setTargetValue(CutoffCurve::toNormalised(cutoff));
+        smoothedResonance.setTargetValue(resonance);
 
         const int channels = juce::jmin(buffer.getNumChannels(), numChannels);
-        juce::dsp::AudioBlock<float> block(buffer);
-        auto subBlock = block.getSubsetChannelBlock(0, static_cast<size_t>(channels));
+        const int numSamples = buffer.getNumSamples();
 
-        juce::dsp::ProcessContextReplacing<float> context(subBlock);
-        filter.process(context);
+        std::array<float*, 2> data {};
+        for (int ch = 0; ch < channels; ++ch)
+            data[static_cast<size_t>(ch)] = buffer.getWritePointer(ch);
+
+        Coefficients coefficients = makeCoefficients(smoothedCutoff.getCurrentValue(),
+                                                     smoothedResonance.getCurrentValue());
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            if (smoothedCutoff.isSmoothing() || smoothedResonance.isSmoothing())
+            {
+                coefficients = makeCoefficients(smoothedCutoff.getNextValue(),
+                                                smoothedResonance.getNextValue());
+            }
+
+            for (int ch = 0; ch < channels; ++ch)
+            {
+                const auto idx = static_cast<size_t>(ch);
+                const float v0 = data[idx][i];
+                const float v3 = v0 - ic2eq[idx];
+                const float v1 = coefficients.a1 * ic1eq[idx] + coefficients.a2 * v3;
+                const float v2 = ic2eq[idx] + coefficients.a2 * ic1eq[idx] + coefficients.a3 * v3;
+
+                ic1eq[idx] = 2.0f * v1 - ic1eq[idx];
+                ic2eq[idx] = 2.0f * v2 - ic2eq[idx];
+
+                data[idx][i] = v2;
+            }
+        }
     }
 
     void LadderFilter::setCutoff(float freq)
     {
-        cutoff = juce::jlimit(20.0f, 20000.0f, freq);
+        cutoff = juce::jlimit(CutoffCurve::kMinHz, CutoffCurve::kMaxHz, freq);
     }
 
     void LadderFilter::setResonance(float res)

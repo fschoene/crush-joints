@@ -1,15 +1,23 @@
 #pragma once
 
 #include <juce_dsp/juce_dsp.h>
+#include <array>
 
 namespace CrushJoints
 {
     /**
-        24 dB/octave resonant low-pass filter.
+        Resonant 2-pole (12 dB/octave) low-pass filter.
 
-        Uses JUCE's zero-delay-feedback state-variable filter (TPT SVF) in
-        low-pass mode. Resonance 0..1 maps to Q 0.7071..4.2071, staying below
-        self-oscillation.
+        Measured on the original CamelCrusher (docs/MEASUREMENTS.md section 5):
+        a linear bilinear-transform biquad with Q = 1 + 6 * resonance and a
+        cutoff that follows the original knob curve (CutoffCurve, 80 Hz to
+        16 kHz). It is implemented as a zero-delay-feedback state-variable
+        filter, which has the same magnitude response and stays stable while
+        the coefficients move.
+
+        Cutoff (as a knob position) and resonance ramp linearly over 10 ms and
+        the coefficients are recomputed every sample while they move, like the
+        original. The class name is historical; this is not a ladder filter.
     */
     class LadderFilter
     {
@@ -21,20 +29,33 @@ namespace CrushJoints
         void reset();
         void processBlock(juce::AudioBuffer<float>& buffer);
 
-        // Set parameters
+        // Cutoff in Hz (80..16000), resonance 0..1.
         void setCutoff(float freq);
         void setResonance(float res);
         void setFilterOn(bool on);
 
     private:
-        float cutoff = 20000.0f;
+        struct Coefficients
+        {
+            float a1 = 0.0f, a2 = 0.0f, a3 = 0.0f;
+        };
+
+        Coefficients makeCoefficients(float cutoffNormalised, float resonance) const;
+        void snapToTargets();
+
+        float cutoff = 16000.0f;
         float resonance = 0.0f;
         bool filterOn = false;
-
+        bool wasOn = false;
+        bool needsSnap = true;
 
         double sampleRate = 44100.0;
         int numChannels = 2;
 
-        juce::dsp::StateVariableTPTFilter<float> filter;
+        juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> smoothedCutoff;
+        juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> smoothedResonance;
+
+        std::array<float, 2> ic1eq { { 0.0f, 0.0f } };
+        std::array<float, 2> ic2eq { { 0.0f, 0.0f } };
     };
 }
