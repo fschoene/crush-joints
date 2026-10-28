@@ -32,6 +32,10 @@ not find it. The VST2 bundle loads directly through `CFBundle`.
 | `check_distortion.py` | Tube/Mech static curves and chain order |
 | `check_filter.py` | Fits the filter response to a bilinear 2-pole biquad; reports fc, Q and linearity |
 | `check_master.py` | Mix law and where volume acts |
+| `compressor_model.py` | Python model of the original compressor (both Phat modes) |
+| `measure_comp_curve.py` | Measures the compressor's `c(Amount)` table into `data/` |
+| `check_compressor.py` | Compares the model with the plugin on seven signals, Phat off and on |
+| `check_chain.py` | Tests all 24 stage orders and the module-switch combinations |
 | `measure_mappings.py` | Real Volume gain and Cutoff frequency at 101 knob positions |
 | `dump_param_displays.py` | Cutoff/Volume/Amount display strings to `data/` |
 | `fxb_compare.py` | Parse the original `CamelCrusherPresetsA.fxb` and diff it against `Presets.cpp` |
@@ -44,6 +48,9 @@ cd tools/analysis
 python3 check_host.py
 python3 check_distortion.py
 python3 dump_param_displays.py
+python3 measure_comp_curve.py
+python3 check_compressor.py
+python3 check_chain.py
 python3 fxb_compare.py /path/to/CamelCrusherPresetsA.fxb
 arch -x86_64 build/vsthost info
 ```

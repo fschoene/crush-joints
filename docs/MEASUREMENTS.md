@@ -33,9 +33,8 @@ Started 2026-10-28. Everything here is reproducible with the scripts in
   signal has passed, the filter stays active even through later silence). The
   harness therefore primes the plugin with a short −60 dB noise burst before every
   render.
-- **Not yet measured:** the compressor's static curve and detector (only
-  preliminary data in section 6), Phat in the compressed region, oversampling or
-  aliasing, and the filter/compressor module order.
+- **Not yet measured:** oversampling/aliasing, and the details listed in
+  section 8.
 
 ## 2. Parameters and display mapping
 
@@ -105,9 +104,9 @@ at 0.1 steps matches this exactly except at 0.0, which is −∞ (not −60 dB).
 ### Amount (index 7)
 
 The compressor Amount knob is displayed as a **level in dB that runs from 0 dB to
-−40 dB**. Measurement (section 6) shows this is the compressor's **threshold, and
-that the low-level gain of the compressor equals the same number with the sign
-flipped** (makeup of 0 … +40 dB). The curve is slow at the start and steep at the
+−40 dB**. Measurement (section 6) shows that the compressor's **low-level gain
+equals the same number with the sign flipped** (makeup of 0 … +40 dB), i.e. the
+display is `−G`. The curve is slow at the start and steep at the
 end:
 
 | Value | dB | Value | dB | Value | dB |
@@ -152,9 +151,8 @@ Dense (1001-point) versions of these three tables are produced by
   three Tube/Mech combinations.
 - The stages are memoryless (the same input value produces the same output on the
   rising and falling edge of a slow triangle).
-- Not yet measured: behaviour with signals fast enough to reveal oversampling or
-  aliasing, any level dependence beyond the static curve, and how `DistOn = 0`
-  interacts with the other stages.
+- `DistOn = 0` switches both stages off; the Filter and Compressor are separate
+  (section 7). Not yet measured: aliasing/oversampling behaviour.
 
 ## 5. Filter
 
@@ -187,62 +185,113 @@ TPT-SVF; the two have the same magnitude response).
 | 0.90 | 4059 | 0 / 0.5 / 1 | 4060.0 | 1.000 / 4.000 / 6.999 |
 | 0.95 | 5258 | 0 / 0.5 / 1 | 5258.1 | 1.000 / 4.000 / 7.000 |
 
-## 6. Compressor (preliminary)
+## 6. Compressor
 
-Only a first pass; the static curve and detector are **not** modelled yet.
-Sine tests at 1 kHz, Phat off unless stated (`measure_mappings.py` and ad-hoc
-scripts; to be turned into `check_compressor.py`).
+The compressor is fully identified. `tools/analysis/compressor_model.py` reproduces
+the plugin to within −65 dB (Phat off) / −79 dB (Phat on) relative to the output
+on sines, noise, bursts and stereo-unbalanced signals at six Amount settings; most
+cases are below −85 dB (float precision). `check_compressor.py` repeats the comparison.
 
-- **Linear region:** at low levels the compressor is a pure gain of
-  **`G = −20·log10(1 − 0.99·Amount)` dB**, from 0 dB at Amount 0 to +40 dB at
-  Amount 1 (0.25 → +2.47, 0.5 → +5.93, 0.75 → +11.78, 0.9 → +19.25,
-  0.95 → +24.51 dB). It equals minus the displayed Amount value. Equivalently:
-  the threshold is the linear level `T = 1 − 0.99·Amount` and the makeup gain is
-  `1/T`.
-- **It acts as a limiter-like compressor** that starts well below the
-  displayed threshold and tends toward a ceiling near −2 dB RMS for high Amount:
+**Signal flow, per sample, stereo-linked:**
 
-| Input (dB RMS) | −60 | −50 | −40 | −30 | −24 | −18 | −12 | −8 | −4 | −2 |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| gain, Amount 0.25 | 2.47 | 2.47 | 2.47 | 2.47 | 2.47 | 2.47 | 2.47 | 2.47 | 1.57 | −0.13 |
-| gain, Amount 0.50 | 5.93 | 5.93 | 5.93 | 5.93 | 5.93 | 5.93 | 4.89 | 3.81 | 1.63 | −0.13 |
-| gain, Amount 0.75 | 11.78 | 11.78 | 11.78 | 11.78 | 11.78 | 8.82 | 6.09 | 4.32 | 1.68 | −0.13 |
-| gain, Amount 1.00 | 40.00 | 38.00 | 28.85 | 19.70 | 14.76 | 10.50 | 6.92 | 4.69 | 1.71 | −0.13 |
+1. **Input clamp:** both channels are clamped to ±3.3. The detector input is
+   `m = max(|L|, |R|)`, so a loud channel also controls the other one.
+2. **Envelope `env`:**
+   - **Phat off:** a *slew-limited follower* of `m`: it moves towards `m` at a
+     constant rate, up by 1.0 per **48 ms** (attack) and down by 1.0 per **80 ms**
+     (release), per full scale. Rates are time-based (identical at 44.1, 48 and
+     96 kHz) and independent of Amount and step size. A sine therefore settles at
+     about 0.83 of its peak.
+   - **Phat on:** `env = m` (instant attack and release).
+3. **Gain target `gt(env)`:** `G = 1 / (1 − 0.99·Amount)` (1 to 100, i.e. 0 to
+   +40 dB) up to `env = e0`, and `P(env) / env` above, with the parabola
+   `P(e) = 1 − c·(1 − e)²`. `e0` is the larger root of `G·e = P(e)`, and `c`
+   depends on Amount (table below). `P(1) = 1`, so a full-scale signal always
+   passes at unity, and the static curve is the continuous join of the line `G·x`
+   and the parabola. Above 1.0 the parabola turns down, so overs are folded back
+   (the output peaks at 1.0 for an input of 1.0 and then falls, going negative above
+   roughly 1.6 to 2.2 depending on Amount). This is the original's behaviour and it is
+   what the "soft-limiting" in the manual is.
+4. **Gain ramp:** the gain falls to `gt` immediately, and rises towards `gt` at
+   most `(G − g_anchor) / N` per sample, with `N = 0.25 ms` (11.025 samples at
+   44.1 kHz). The slope is fixed when the ramp starts and recomputed whenever the
+   gain equals its target again. With Phat off the slow envelope almost never lets
+   the ramp matter; with Phat on it is the release.
+5. **Output:** `out = clamped input × gain`, then Master (hard clip at ±0.9999).
 
-  The last column is the master clip at ±0.9999. The knee is wide; with
-  Amount 1.0 compression is already audible 10 dB below the displayed threshold.
-- **Time behaviour:** envelope settling after a level step takes roughly
-  10–20 ms in both directions (attack and release are both fast); no slow
-  release was seen. Needs a proper step-response measurement with a better
-  detector window.
-- **Phat:** at low level the frequency response is **flat** (±0.03 dB from
-  40 Hz to 15 kHz at Amount 0.5 and 1.0). **There is no bass shelf in the linear region.**
-  In the compressed region Phat gives 0.3–0.9 dB *less* gain reduction at high
-  levels (e.g. Amount 1.0, −4 dB: 1.71 → 2.49 dB gain; −2 dB: −0.13 → +0.90).
-- **Amount 0 / compressor on** is bit-transparent.
+Static DC curves match `out = min(G·x, P(x))` exactly for Amount ≥ 0.5 (error
+< 1e-4), and the parabola side for all amounts. With the compressor on and Amount
+at 0 the gain is exactly 1 below 0.998, so only the fold-back above 1.0 and the
+±3.3 clamp remain; at Amount 0 it is still bit-transparent for normal levels.
 
-## 7. Open measurements (next)
+**`c` against Amount** (measured on 101 points by
+`tools/analysis/measure_comp_curve.py`, interpolated linearly):
 
-In this order:
+| Amount | c | Amount | c | Amount | c |
+|---:|---:|---:|---:|---:|---:|
+| 0.0 | 1.4493 | 0.4 | 1.0446 | 0.8 | 0.7884 |
+| 0.1 | 1.3285 | 0.5 | 0.9699 | 0.9 | 0.7391 |
+| 0.2 | 1.2222 | 0.6 | 0.9030 | 0.95 | 0.7162 |
+| 0.3 | 1.1282 | 0.7 | 0.8428 | 1.0 | 0.6943 |
 
-1. **Compressor:** a clean static curve (level sweep with RMS and peak
-   detectors, several waveforms), knee shape, attack and release laws, program
-   dependence, stereo link, Phat behaviour above threshold, and the
-   filter/compressor order.
-2. **Cutoff smoothing** and **Volume/Mix smoothing** laws.
-3. **Aliasing / oversampling** of the distortion stages.
-4. **Factory programs:** load `CamelCrusherPresetsA.fxb` into the plugin through
-   `effSetChunk` to confirm that the parsed values reproduce the expected audio.
+**Other compressor facts**
 
-## 8. Effect on CrushJoints
+- **Phat does not change the static curve** (DC curves are identical to
+  4 decimals) and does not shape the frequency response (flat ±0.03 dB). It only
+  changes the dynamics: instant detector plus the 0.25 ms release ramp instead of
+  the 48 ms / 80 ms follower. It sounds punchier and, above threshold, gives less
+  gain reduction on sustained signals. The manual's note about "crackles" fits an
+  instant, ripple-following gain.
+- **Switching the module on** starts the follower from zero and fades the Amount
+  in; **switching Phat off** restarts the follower from zero and the gain rises
+  through the 0.25 ms ramp. Switching the module off is an instant bypass.
+- **Amount** changes are smoothed (see section 7).
 
-| Finding | Current CrushJoints behaviour | Status |
-|---------|--------------------------------|--------|
-| Mech runs before Tube | Mech then Tube | fixed 2026-10-28 |
-| Output hard clip at ±0.9999 | hard clip at ±0.9999 | fixed 2026-10-28 |
-| Cutoff is 80 Hz – 16 kHz with a custom curve | 20 Hz – 20 kHz range; legacy presets use a 20 Hz – 20 kHz exponential map | open |
-| Volume is −∞ … 0 dB, gain = value^2.737 | −24 … +12 dB range, table starts at −60 dB | open |
-| Filter is a linear 2-pole biquad LPF, Q = 1 + 6·Res | TPT SVF (same 2-pole shape), Q = 0.7071 … 4.2071 | open: only the Q range differs |
-| Master is clip(vol · (mix·wet + (1−mix)·dry)) | same | confirmed, no change |
-| Compressor: low-level gain 0 … +40 dB = −20·log10(1−0.99·Amount) | threshold 0 … −30 dB, makeup derived from a static curve | open, redesign after the static-curve measurement |
-| Phat has no bass shelf in the linear region | 120 Hz +8 dB low shelf into a parallel compressor | open, redesign |
+## 7. Signal chain, switches and smoothing
+
+**Chain (measured, `check_chain.py`):**
+
+```
+in → Mech → Filter → Tube → Compressor → Master (mix, volume, clip ±0.9999) → out
+```
+
+The filter sits **between Mech and Tube**. Of the 24 orderings of the four
+stages, this one has an RMS error of 0.0019 and the next best 0.060 (30× worse); the
+remaining 0.002 is the distortion table precision. The **Dist** switch
+turns Mech *and* Tube on or off together; the Filter and Compressor switches only
+affect their own stage, so every combination of the three switches was verified.
+
+**Parameter smoothing** (steps applied mid-stream with DC or noise input):
+
+| Parameter | Behaviour |
+|---|---|
+| Volume, Mix | linear ramp in the **knob value**, about 10 ms (441 samples); Volume's gain curve `v^2.737` is applied to the ramping value |
+| Amount | ramps like Volume/Mix over about 10 ms |
+| Cutoff | linear ramp in the knob value over about 10 ms with the coefficients recomputed every sample (error vs the per-sample model 3 % of the signal; per-block updates are clearly worse) |
+| Tube, Mech | no smoothing; changes apply on the next sample |
+| Resonance | not measured separately; assumed like Cutoff |
+| Module switches | instant (Compressor-on is treated as Amount ramping up from 0) |
+
+## 8. Open measurements (next)
+
+1. **Cutoff/Resonance smoothing** and the Filter's behaviour when it is switched
+   on (state reset) in more detail.
+2. **Aliasing / oversampling** of the distortion stages.
+3. **Factory programs:** load `CamelCrusherPresetsA.fxb` into the plugin through
+   `effSetChunk` to confirm that the parsed values reproduce the expected audio
+   end to end.
+4. **Resonance/Q ranges at the extremes** (cutoff near 16 kHz at high sample
+   rates) and the exact behaviour of denormals/silence in the compressor.
+
+## 9. Effect on CrushJoints
+
+| Finding | Behaviour in CrushJoints before this work | Status |
+|---------|-------------------------------------------|--------|
+| Chain is Mech → Filter → Tube → Compressor → Master | Tube → Mech, then Filter, then Compressor | fixed (see STATUS.md) |
+| Output hard clip at ±0.9999 | limiter at ±2.0 | fixed 2026-10-28 |
+| Cutoff is 80 Hz – 16 kHz with a custom curve | 20 Hz – 20 kHz exponential-skew knob | fixed |
+| Volume is −∞ … 0 dB, gain = value^2.737 | −24 … +12 dB range; stepped legacy table | range kept deliberately; legacy conversion uses the measured law |
+| Filter is a linear 2-pole biquad, Q = 1 + 6·Res | TPT SVF, Q 0.7071 … 4.2071 | fixed |
+| Compressor: measured model above | CrushClone-derived design | replaced |
+| Phat: instant detector, no shelf | 120 Hz shelf into a parallel compressor | replaced; the old design is kept as the hidden "Boom" mode |
+| Master is clip(vol · (mix·wet + (1−mix)·dry)) | same | confirmed |
