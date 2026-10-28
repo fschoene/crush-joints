@@ -40,9 +40,9 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 | Plugin entry point | ✅ working | `createPluginFilter()` present |
 | Processor/buses/state | ✅ working | stereo + mono/mono + mono/stereo I/O; APVTS XML plus `currentProgram`, A/B slots and lock flags |
 | Parameter set | ✅ working | 12 parameters, editor attachments bound |
-| Distortion DSP | ✅ implemented | reverse-camel 101-entry Tube/Mech tables, Mech→Tube series (measured order), bypass |
-| Filter DSP | ✅ implemented | ZDF/TPT SVF low-pass (2-pole), Q 0.7071–4.2071 (original: Q 1–7), wide-open bypass |
-| Compressor DSP | ✅ implemented | peak envelope, soft knee, auto makeup, Phat parallel path |
+| Distortion DSP | ✅ implemented | reverse-camel 101-entry Tube/Mech tables, run as Mech → Filter → Tube (measured order), bypass |
+| Filter DSP | ✅ implemented | ZDF/TPT SVF low-pass (2-pole), Q = 1 + 6·Res, original cutoff curve (80 Hz–16 kHz), 10 ms parameter ramps; the original's output limiter is missing |
+| Compressor DSP | ✅ implemented | measured model of the original: linked slew-limited follower, parabola gain computer, 0.25 ms gain ramp; Phat = instant detector; old Phat design kept as hidden "Boom" |
 | Master DSP | ✅ implemented | dry/wet, volume, full bypass, ±0.9999 hard clip (measured), NaN/Inf cleanup |
 | Oversampling | ⚠️ not in path | deliberate: matches reverse-camel, keeps dry/wet latency-free |
 | Factory presets | ✅ working | Default at the top outside the groups; 20 Legacy/Original + 11 CrushClone presets in groups |
@@ -85,25 +85,27 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
   `B -> A` copies the active snapshot into the inactive one.
 - Plugin state is saved and restored as APVTS XML plus `currentProgram`, the
   two A/B snapshots and the seven lock flags.
-- Audio is processed through the full chain:
-  - **Distortion:** Mech table stage followed by Tube table stage (the order
-    measured on the original), with the
-    reference gain/polynomial formulas and linear interpolation between table
-    entries. At amount 0 both stages are near-transparent; `tube_on` bypasses
-    the whole stage.
-  - **Filter:** 2-pole (12 dB/oct) state-variable low-pass. Resonance 0..1 maps to
-    Q 0.7071..4.2071. The block is skipped when the filter is off, or when
-    cutoff ≥ 18 kHz with resonance < 0.05.
-  - **Compressor:** peak detector across channels, one-pole attack/release
-    (10→1 ms and 150→50 ms with Amount), soft-knee gain computer (0→-30 dB
-    threshold, 1:1→8:1 ratio), auto makeup derived from the static curve at
-    -6 dBFS (max +12 dB). Amount and Phat are smoothed over 20 ms. Phat adds a
-    parallel leg: 120 Hz +8 dB low shelf into a fixed heavy compressor
-    (-18 dB, 6:1), crossfaded 30%→50% with Amount. Phat is audible at Amount 0
-    as long as Compressor is on.
+- Audio is processed through the chain measured on the original,
+  **Mech → Filter → Tube → Compressor → Master**:
+  - **Distortion:** the reverse-camel Mech and Tube table stages with linear
+    interpolation between table entries. At amount 0 both stages are
+    near-transparent; `tube_on` bypasses both stages (the Filter is independent).
+  - **Filter:** 2-pole (12 dB/oct) zero-delay-feedback low-pass with
+    `Q = 1 + 6·Res` (1 to 7), the original's cutoff curve (80 Hz to 16 kHz, a
+    lookup table, see `Source/Common/CutoffCurve.*`), linear 10 ms ramps for
+    cutoff and resonance and per-sample coefficients while they move. Switching
+    it on starts from a cleared state. The original's output limiter is not
+    implemented.
+  - **Compressor:** the measured model. Inputs are clamped to ±3.3; a stereo-linked
+    follower tracks `max(|L|,|R|)` at 1.0 per 48 ms up / 1.0 per 80 ms down (Phat
+    mode: instantaneous); the gain target is `G = 1/(1−0.99·Amount)` up to a knee
+    and `(1−c(1−e)²)/e` above it; the gain falls at once and rises along a 0.25 ms
+    ramp. Amount ramps over 10 ms; switching the module on starts from unity gain.
+    Phat has no bass shelf. The earlier Phat design is kept as a hidden "Boom"
+    stage (DSP-level switch, no parameter, no UI).
   - **Master:** optional dry/wet blend against a pre-effects copy, output
-    volume, full bypass when `master_on` is false, hard clipping at ±0.9999 (as measured on the original) and
-    NaN/Inf sanitation.
+    volume, full bypass when `master_on` is false, hard clipping at ±0.9999 (as
+    measured on the original) and NaN/Inf sanitation.
 
 ## 4. Test results
 
@@ -118,10 +120,12 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 3a. Distortion output against values recorded from the original plugin for
    three Tube/Mech combinations (order-sensitive).
 4. Distortion transparency at amount 0 and bypass at `tube_on = false`.
-5. 10 kHz attenuation through a 1 kHz low-pass, plus filter bypass.
-6. Compressor gain reduction, finite output and bypass; level behaviour
-   (transparent at Amount 0, makeup follows the curve) and Phat (bass tilt of
-   +3…5 dB on a bass+treble mix, click-free automation).
+5a. Cutoff curve points and inverse (values read from the original).
+5b. Filter against the analytic bilinear biquad (Q = 1 + 6·Res) at several
+   frequencies, gain Q at the cutoff, linearity.
+6. Compressor against values recorded from the original: static curves for four
+   Amounts (Phat off and on), Phat release ramp, slow attack/release samples,
+   stereo link, bypass and switch-on fade, plus the hidden Boom stage.
 7. Master volume boost, ±0.9999 clipping, full bypass and dry/wet mix.
 8. The 32-preset factory bank (Default + 20 legacy + 11 grouped CrushClone),
    including the corrected Telephone flags, category assignment, legacy value
@@ -161,20 +165,16 @@ All processor tests passed.
 Ordered roughly by impact. Items marked "measured" come from black-box
 measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
 
-0. **Fidelity gaps found by measurement (2026-10-28).**
-   - ~~Distortion order~~ and ~~output clip level~~: fixed 2026-10-28 (Mech →
-     Tube; hard clip at ±0.9999).
-   - Cutoff spans 20 Hz–20 kHz here; the original spans **80 Hz–16 kHz** with a
-     custom curve. Legacy preset cutoffs use the wrong map.
-   - Volume spans −24…+12 dB here; the original spans **−∞…0 dB**.
-   - Compressor Amount is displayed by the original as 0…−40 dB; our threshold
-     curve ends at −30 dB.
-   - Filter: the original is a linear 2-pole biquad with `Q = 1 + 6·Res`; ours
-     uses Q 0.7071–4.2071. Only the Q range differs.
-   - Compressor and Phat: the original's low-level gain is 0…+40 dB
-     (`−20·log10(1−0.99·Amount)`) with fast dynamics and no Phat bass shelf;
-     our design (threshold 0…−30 dB, 120 Hz +8 dB shelf) is a guess and does not
-     match. Still being measured.
+0. **Filter output limiter is missing (measured, not implemented).** The
+   original's filter limits its own output at about ±1.0: gain falls as
+   `1/envelope` once an envelope that attacks at 113.3 per second passes 1.0, and
+   recovers very slowly. It is exact for steps but only partly identified for
+   sines and noise (the steady limit is 1.027 for a sine at every frequency
+   above 1 kHz and the release depends on the envelope). It matters for hot
+   settings with resonance, where it makes the clone's output differ by up to
+   about −7 dB RMS error in random A/B tests; most settings agree to better than
+   −45 dB. See [MEASUREMENTS.md](MEASUREMENTS.md) §5 and
+   `tools/analysis/compare_clone.py`.
 
 1. **No host validation yet.** `pluginval`, `auval` and DAW testing have not
    been run. Offline tests and a Standalone launch are the only verification.
@@ -186,18 +186,19 @@ measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
    CamelCrusher-inspired rather than pixel-exact.
 4. **Randomize can still produce extreme settings.** It leaves module switches
    alone and respects locks, but it can set several parameters to their
-   extremes at once. There is no "intelligent" constraint yet. Phat is also a
-   deliberate deviation: it is audible at Amount 0, unlike CrushClone.
-5. **Master volume range differs from the original.** The plugin uses
-   -24..+12 dB (CrushClone's range, required by presets such as MAS Loudener at
-   +2 dB) instead of the original −∞..0 dB (measured; no positive gain).
-6. **Filter and compressor are reference-inspired, not measured clones.** The
-   SVF topology, Q range, compressor curve and Phat shelf numbers come from
-   CrushClone rather than black-box measurement of the original; no public
-   source documents the original's compressor algorithm. The makeup-gain rule
-   and the Phat topology (2026-10-26) are CrushJoints' own design. They are
-   unverified in a DAW and the constants live at the top of
-   `Source/DSP/Compressor.cpp` for tuning.
+   extremes at once. There is no "intelligent" constraint yet.
+5. **Master volume range is wider than the original (deliberate).** The plugin
+   keeps -24..+12 dB (the original is −∞..0 dB with gain `knob^2.737`; the 20
+   factory presets are converted with that law and stay inside our range).
+   Like the A/B comparison and the randomize locks, the positive range is an
+   intended deviation. Master Mix and Volume are not smoothed here; the
+   original ramps them over 10 ms.
+6. **Compressor and filter are measured models.** They match the original to
+   better than −65 dB on test signals; the differences are the missing filter
+   limiter (item 0), the exact behaviour of the filter when it is switched on,
+   and the Amount-fade shape when the compressor is switched on (within a few
+   percent). The hidden "Boom" stage (the former Phat design) is a CrushJoints
+   invention and has no counterpart in the original.
 7. **Format coverage is narrower than old docs claimed.** Only VST3, AU and
    Standalone are built; there is no CLAP, LV2 or AAX target.
 8. **No CI and no LICENSE file.** The README claims GPLv3, but the repository
@@ -205,12 +206,10 @@ measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
 9. **User presets are a single XML bank.** There is no import/export, search,
    filter or sorting UI. Corrupt or unreadable files are ignored gracefully,
    leaving the factory bank available.
-10. **Original preset conversion is provisional.** The 20 raw preset values
-    match the original `CamelCrusherPresetsA.fxb`, but cutoff uses a 20 Hz–20 kHz
-    exponential map and volume uses the reverse-camel stepped dB table. The
-    original manual gives no ranges or curves (only example readouts
-    `71.7 Hz` and `-40 dB`); the exact curves are not measured; verify before
-    release.
+10. **Original preset conversion uses measured laws.** The 20 raw preset values
+    match the original `CamelCrusherPresetsA.fxb`; cutoff uses the original knob
+    curve and volume the measured `knob^2.737` law. Not yet checked: loading the
+    `.fxb` into the original and comparing audio with our presets end to end.
 11. **Program indices changed with Milestone 4a.** Default is 0, CrushClone
     1–11, Legacy/Original 12–31 and User starts at 32. States saved before this
     change keep their parameter values but may display a different current
@@ -219,6 +218,10 @@ measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
     mono/stereo and stereo/stereo layouts pass offline tests and mono VST3/AU
     work in Reaper; Logic mono-track verification remains optional for the
     broader Milestone 4 host matrix.
+13. **Cutoff parameter range changed.** `cutoff` is now 80 Hz–16 kHz with the
+    original's knob curve (it was 20 Hz–20 kHz with a skew). Saved states and user
+    presets keep their Hz value, clamped to the new range, so the knob position
+    changes accordingly.
 
 ## 6. Validation checklist
 

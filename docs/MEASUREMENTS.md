@@ -174,8 +174,33 @@ TPT-SVF; the two have the same magnitude response).
   the peak is +16.9 dB at Res = 100 %.
 - **Cutoff changes** are smoothed: after a step the response has settled in
   about 10–20 ms. The exact smoothing law is not yet measured.
-- The Filter does not clip or colour the signal itself; only the master clip
-  applies.
+- Below the output limiter described next, the Filter does not clip or colour
+  the signal.
+
+**Output limiter (measured, not implemented).** The original's filter limits its own
+output. With a DC or sine input the output settles at ±1.0 (a sine peaks at 1.027
+to 1.029 above 1 kHz, 1.017 at 100 Hz and 1.005 at 30 Hz), with no harmonic
+distortion: the signal is simply scaled by a slowly moving gain `g = 1/e`
+applied after the filter (stereo-linked behaviour not yet checked).
+
+- Below 1.0 nothing happens, which is why the earlier linearity checks passed.
+- The envelope `e` attacks linearly at **113.33 per second** towards `|y|`
+  (i.e. 8.82 ms per unit): a step from 0.5 to 2.0 takes 4.4 ms before the gain
+  starts to fall, a step from silence 8.8 ms, and then `1/g` rises linearly.
+  This fits DC steps exactly (error 0.00000).
+- When `|y|` falls below `e` and `e < 1`, `e` falls linearly at about
+  **20.8 per second** (0.8 → 0 loses 0.11 in 5 ms).
+- When `e > 1` the gain recovers exponentially, `dg/dt = 0.13·(1 − g)` per
+  second (time constant about 7.7 s), independent of the signal level below 1.2.
+  For `e = 3` that is 0.78 per second.
+- What is not understood: the steady sine limit of 1.027 (the model gives 1.000),
+  and the behaviour with noise (the plugin lets peaks of 2.2 through where the
+  model, with the same constants, limits to 1.4). A detector that smooths `|y|`
+  by about 20 µs fixes the sine but not the noise.
+
+With the limiter missing, `tools/analysis/compare_clone.py` shows a typical
+agreement of −45 to −60 dB against the original over random settings and an
+error up to −7 dB RMS for hot, resonant settings with Filter and Distortion on.
 
 | Cutoff | Hz shown | Res | fitted fc (Hz) | fitted Q |
 |---:|---:|---:|---:|---:|
@@ -274,13 +299,15 @@ affect their own stage, so every combination of the three switches was verified.
 
 ## 8. Open measurements (next)
 
-1. **Cutoff/Resonance smoothing** and the Filter's behaviour when it is switched
+1. **The filter output limiter** (section 5): detector shape, release law and
+   stereo linking.
+2. **Cutoff/Resonance smoothing** and the Filter's behaviour when it is switched
    on (state reset) in more detail.
-2. **Aliasing / oversampling** of the distortion stages.
-3. **Factory programs:** load `CamelCrusherPresetsA.fxb` into the plugin through
+3. **Aliasing / oversampling** of the distortion stages.
+4. **Factory programs:** load `CamelCrusherPresetsA.fxb` into the plugin through
    `effSetChunk` to confirm that the parsed values reproduce the expected audio
    end to end.
-4. **Resonance/Q ranges at the extremes** (cutoff near 16 kHz at high sample
+5. **Resonance/Q ranges at the extremes** (cutoff near 16 kHz at high sample
    rates) and the exact behaviour of denormals/silence in the compressor.
 
 ## 9. Effect on CrushJoints
@@ -293,5 +320,6 @@ affect their own stage, so every combination of the three switches was verified.
 | Volume is −∞ … 0 dB, gain = value^2.737 | −24 … +12 dB range; stepped legacy table | range kept deliberately; legacy conversion uses the measured law |
 | Filter is a linear 2-pole biquad, Q = 1 + 6·Res | TPT SVF, Q 0.7071 … 4.2071 | fixed |
 | Compressor: measured model above | CrushClone-derived design | replaced |
+| Filter output limiter | not present | open (section 5) |
 | Phat: instant detector, no shelf | 120 Hz shelf into a parallel compressor | replaced; the old design is kept as the hidden "Boom" mode |
 | Master is clip(vol · (mix·wet + (1−mix)·dry)) | same | confirmed |

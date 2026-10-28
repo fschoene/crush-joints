@@ -45,12 +45,13 @@ crush-joints/
     │   └── LockButton.h/.cpp              # padlock button for randomize locks
     ├── DSP/
     │   ├── Distortion.h/.cpp       # Tube + Mech waveshapers and coefficient tables
-    │   ├── LadderFilter.h/.cpp     # SVF low-pass wrapper
-    │   ├── Compressor.h/.cpp       # one-knob compressor + Phat
+    │   ├── LadderFilter.h/.cpp     # 2-pole resonant low-pass (historical name)
+    │   ├── Compressor.h/.cpp       # measured one-knob compressor + Phat (+ hidden Boom)
     │   ├── Oversampler.h/.cpp      # 4× oversampling wrapper (not in the current path)
     │   └── Master.h/.cpp           # volume, mix, limiter
     └── Common/
         ├── CamelCrusherCoeffs.h/.cpp  # reverse-camel coefficient tables
+        ├── CutoffCurve.h/.cpp         # the original's cutoff knob curve
         └── Presets.h/.cpp             # CrushClone + legacy + user preset bank
 ```
 
@@ -123,10 +124,11 @@ Stereo input with mono output is rejected.
 
 ```
 Audio In
-  → Distortion (Tube + Mech)
-  → LadderFilter (SVF low-pass)
+  → Distortion: Mech stage
+  → LadderFilter (2-pole low-pass)
+  → Distortion: Tube stage
   → Compressor (+ Phat)
-  → Master (volume + mix + limiter)
+  → Master (mix + volume + hard clip)
   → Audio Out
 ```
 
@@ -137,18 +139,17 @@ Audio In
    into the corresponding DSP object via its setters.
 3. If the Master is off or the mix is below 100%, the pre-effects signal is
    copied into a pre-allocated dry buffer.
-4. `distortion.processBlock`, `filter.processBlock`,
-   `compressor.processBlock` and `master.processBlock` are called in order.
-   Master receives the dry buffer so it can perform the dry/wet blend or a full
-   bypass.
+4. `distortion.processMech`, `filter.processBlock`, `distortion.processTube`,
+   `compressor.processBlock` and `master.processBlock` are called in order,
+   which is the order measured on the original (see
+   [MEASUREMENTS.md](MEASUREMENTS.md)). Master receives the dry buffer so it can
+   perform the dry/wet blend or a full bypass.
 
-Distortion always runs the Mech stage followed by the Tube stage (the order
-measured on the original; see [MEASUREMENTS.md](MEASUREMENTS.md)).
-The filter bypasses itself when it is off, wide open and non-resonant. The
-compressor bypasses when it is off, or when Amount is near zero and Phat is
-off. Master applies the
-mix, volume, a hard clip at ±0.9999 (measured on the original) and NaN/Inf
-sanitation.
+The `tube_on` switch bypasses both distortion stages; the filter and the
+compressor have their own switches. The compressor is a bit-transparent unity
+gain below full scale at Amount 0 (it still clamps at ±3.3 and folds back overs).
+Master applies the mix, volume, a hard clip at ±0.9999 (measured on the original)
+and NaN/Inf sanitation.
 
 There is currently **no oversampling** in the signal path, matching the
 reverse-camel reference and keeping the dry/wet path free of latency. The
@@ -164,7 +165,7 @@ binds to them by ID.
 | Tube | `tube` | float | 0.0–1.0 | 0.0 |
 | Mech | `mech` | float | 0.0–1.0 | 0.0 |
 | Distortion on | `tube_on` | bool | — | true |
-| Cutoff | `cutoff` | float Hz | 20–20000 | 20000 |
+| Cutoff | `cutoff` | float Hz, original knob curve | 80–16000 | 16000 |
 | Resonance | `res` | float | 0.0–1.0 | 0.0 |
 | Filter on | `lpf_on` | bool | — | false |
 | Amount | `amount` | float | 0.0–1.0 | 0.0 |
@@ -180,8 +181,9 @@ Notes:
   ([MEASUREMENTS.md](MEASUREMENTS.md)); the implementation uses -24–+12 dB to match CrushClone's preset bank (some
   presets use positive gain). This is an intentional deviation, documented in
   [STATUS.md](STATUS.md).
-- The cutoff parameter is not skewed in the APVTS; the editor applies a
-  `setSkewFactorFromMidPoint(1000.0)` to the knob so the low end is usable.
+- The cutoff parameter keeps its value in Hz, but its `NormalisableRange` uses
+  the original's measured knob curve (`CutoffCurve`), so the knob, host
+  automation and the preset conversion all follow the same law.
 - A/B comparison is implemented at the processor level as two snapshots of
   all 12 normalised parameter values. Switching slots captures the current
   parameters, then applies the other snapshot through
@@ -356,7 +358,9 @@ Run both after building:
 ./build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 ```
 
-The test targets can be disabled with `-DCRUSHJOINTS_BUILD_TESTS=OFF`.
+The test targets can be disabled with `-DCRUSHJOINTS_BUILD_TESTS=OFF`. The
+offline renderer used by `tools/analysis/compare_clone.py` is only built with
+`-DCRUSHJOINTS_BUILD_TOOLS=ON`.
 
 ## 9. Plugin entry point
 

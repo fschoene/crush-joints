@@ -33,14 +33,14 @@ All four DSP blocks are implemented and verified by offline tests.
 
 - [x] Import the reference 101-entry Tube and Mech coefficient tables from
       reverse-camel; store them in `Common/CamelCrusherCoeffs.cpp`.
-- [x] Implement Tube followed by Mech in series, with interpolation between
-      table entries.
-- [x] Implement the SVF low-pass filter with Q 0.7071–4.2071 and wide-open
-      bypass.
-- [x] Implement the one-knob soft-knee compressor, auto makeup and Phat
-      parallel path.
-- [x] Implement Master volume, dry/wet, full bypass, ±2.0 safety limiter and
-      NaN/Inf sanitation.
+- [x] Implement the Tube and Mech stages with interpolation between table
+      entries (run as Mech → Filter → Tube since Milestone 4c).
+- [x] Implement the SVF low-pass filter (reworked in Milestone 4c: Q 1–7,
+      original cutoff curve).
+- [x] Implement the one-knob compressor with Phat (replaced in Milestone 4c by
+      the measured model of the original).
+- [x] Implement Master volume, dry/wet, full bypass, safety clip (±0.9999 since
+      Milestone 4c) and NaN/Inf sanitation.
 - [x] Add `Tests/DSPTests.cpp`, including a literal transcription of
       reverse-camel's `run()` loop for end-to-end comparison.
 - [x] Correct the Telephone preset flags (filter on, compressor off).
@@ -151,13 +151,18 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
 - [x] Distortion order: Mech → Tube (measured), with a test against recorded
       original outputs.
 - [x] Output clip: hard clip at ±0.9999 (measured).
-- [ ] Cutoff: 80 Hz–16 kHz with the measured curve; fix the legacy preset
-      conversion.
-- [ ] Volume: −∞…0 dB with the measured table; decide how to treat the
-      CrushClone presets that use positive gain.
-- [x] Measure the filter (linear 2-pole biquad, `Q = 1 + 6·Res`); [ ] match the
-      Q range and the cutoff map in code.
-- [ ] Measure and match the compressor and Phat (preliminary data only).
+- [x] Cutoff: 80 Hz–16 kHz with the measured curve (`CutoffCurve`); legacy preset
+      conversion fixed.
+- [x] Volume: the positive range (−24…+12 dB) is kept as a deliberate
+      deviation; the 20 factory presets use the measured `knob^2.737` law and stay
+      inside the range.
+- [x] Filter: linear 2-pole biquad with `Q = 1 + 6·Res`, 10 ms parameter ramps.
+- [x] Compressor and Phat: the measured model replaces the CrushClone-derived
+      design; the old Phat design is kept as a hidden "Boom" stage.
+- [x] Signal chain order Mech → Filter → Tube → Compressor → Master (test in
+      `ProcessorTests.cpp`).
+- [ ] Filter output limiter of the original (measured, partly identified).
+- [ ] Mix/Volume 10 ms smoothing.
 - [ ] Add regression tests that compare against recorded measurements.
 
 ## Milestone 4 — Validation and release (pending)

@@ -17,8 +17,9 @@ version plans live in [VERSION_1.md](VERSION_1.md) and
 ### Version 1 at a glance
 
 - Tube + Mech distortion using the reverse-camel coefficient tables.
-- 2-pole SVF low-pass filter with resonance.
-- One-knob compressor with Phat parallel path.
+- 2-pole low-pass filter (Q 1–7) with the original cutoff curve, between Mech
+  and Tube.
+- The original's one-knob compressor and Phat mode (measured model).
 - Master volume, mix, safety limiter and full bypass.
 - Default preset at the top outside the groups, plus the original 20-program
   factory bank and 11 CrushClone presets organized into Legacy/Original,

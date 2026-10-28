@@ -21,9 +21,12 @@ short and links here.
 
 - **Build:** working. Clean build produces VST3, AU and Standalone on macOS
   with CMake + a local JUCE 9 checkout, including mono and stereo bus layouts.
-- **DSP:** all four modules implemented (Tube/Mech tables, SVF low-pass,
-  one-knob compressor + Phat, master limiter). Offline DSP and processor tests
-  pass, including a comparison against the reverse-camel reference path.
+- **DSP:** all four modules implemented as measured models of the original
+  (Mech → Filter → Tube → Compressor → Master): reverse-camel Tube/Mech tables,
+  2-pole low-pass with the original cutoff curve, the original's one-knob
+  compressor and Phat mode, hard clip at ±0.9999. Offline DSP and processor
+  tests pass, including comparisons with values recorded from the original.
+  Known gap: the original's filter output limiter.
 - **Presets/state:** Default at the top outside the groups, plus 20 original
   Legacy/Original and 11 CrushClone presets grouped with a User category;
   disk-backed user presets (save,

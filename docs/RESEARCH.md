@@ -27,19 +27,17 @@ the installer.
 
 ## 2. Signal chain
 
-The module order is **not stated in the original manual**; it only lists the
-modules. The module order below follows reverse-camel (Distortion → Master) and
-CrushClone, and matches the module and parameter order in the original binary
-and skin (Dist, Filter, Compressor, Master). **Inside Distortion the order is
-Mech first, then Tube**, which was measured on the original (MEASUREMENTS.md §4).
-Filter and compressor order is not independently verified:
+The module order is **not stated in the original manual**. It was measured on
+the original (MEASUREMENTS.md §7); the Filter sits *between* the two distortion
+stages:
 
 ```
 Audio In
-  → Distortion (Mech → Tube, measured; each stage has its own amount)
+  → Mech distortion
   → Low-Pass Filter
+  → Tube distortion
   → Compressor (+ Phat)
-  → Master (Volume + Mix + limiter)
+  → Master (Mix, Volume, hard clip at ±0.9999)
   → Audio Out
 ```
 
@@ -168,68 +166,33 @@ not implement the filter.
 
 | Control | Range | Default | Description |
 |---------|-------|---------|-------------|
-| AMOUNT | 0–100 | 0 | Compression intensity / perceived loudness |
-| PHAT MODE | On/Off | Off | Harder parallel compression + bass thickness |
+| AMOUNT | 0–100 | 0 | Gain/limiting intensity (low-level gain 0 to +40 dB) |
+| PHAT MODE | On/Off | Off | Instant detector with a 0.25 ms gain release |
 
-Characteristics:
+The manual describes a "sophisticated and responsive 'soft-limiting'
+compressor algorithm, modelled after the classic analogue compressor designs
+renowned in studio folklore", with two parameters: Amount ("the amount of
+compression applied to the sound, and thus the apparent 'loudness'") and the
+**P** (Phat) button, which it recommends turning off for clean signals to avoid
+"occasional crackles at high levels".
 
-- The manual describes a "sophisticated and responsive 'soft-limiting'
-  compressor algorithm, modelled after the classic analogue compressor designs
-  renowned in studio folklore", with two parameters: Amount ("the amount of
-  compression applied to the sound, and thus the apparent 'loudness'") and the
-  **P** (Phat) button.
-- One knob drives threshold, ratio, attack, release and makeup gain together.
-  - Amount 0 → threshold 0 dB, ratio 1:1 (no compression).
-  - Amount 100 → threshold ≈ -30 dB, ratio ≈ 8:1 (heavy squash).
-- Auto makeup gain rises with Amount.
-- The plugin itself displays Amount as a level from **0 dB down to −40 dB**
-  (MEASUREMENTS.md §2), so the −30 dB endpoint quoted above is not the
-  original's. The display suggests Amount drives a threshold, but this is not
-  measured yet.
-- Not a transparent utility compressor: it is a density/pump tool intended for
-  already-distorted signals.
+**The behaviour is fully measured** (MEASUREMENTS.md §6) and replaces everything
+that earlier versions of this document took from CrushClone:
 
-**Provenance warning.** No source documents the original's algorithm. The
-manual only says "sophisticated and responsive soft-limiting compressor", and
-reviewers describe it as OTT-like, dense and not subtle. The manual says
-nothing about parallel processing or a low shelf for Phat; its only statement is
-that turning **P** off gives "smoother" results on clean signals and avoids
-"occasional crackles at high levels". The threshold, ratio,
-attack/release, knee and Phat numbers in this document come from CrushClone,
-whose own README calls it "a clean-room recreation of the concept". They are
-plausible design targets, not measurements of the original.
+- A stereo-linked follower of `max(|L|, |R|)` slews at 1.0 per 48 ms (up) and
+  1.0 per 80 ms (down); in Phat mode it is the instantaneous magnitude.
+- The gain is `G = 1 / (1 − 0.99·Amount)` (0 to +40 dB) up to a knee, and
+  `P(env)/env` above it with `P(e) = 1 − c(Amount)(1 − e)²`, so full scale
+  always passes at unity and overs fold back.
+- The gain falls instantly and rises along a 0.25 ms ramp.
+- Phat does not change the static curve or the frequency response; there is **no
+  low shelf and no parallel path** in the original. CrushClone's Phat design
+  (120 Hz +8 dB shelf into a parallel compressor) is not the original's.
+- The plugin displays Amount as `−G` in dB (0 to −40 dB).
 
-CrushJoints keeps CrushClone's topology (peak detector across channels,
-one-pole attack/release, soft-knee gain computer; attack 10→1 ms, release
-150→50 ms) but fixes two problems in CrushClone's version:
-
-- **Makeup gain** is derived from the static curve instead of being a fixed
-  `Amount × 12 dB`. The old version acted as a plain +3 dB gain at Amount 25%
-  (no compression yet) and removed up to 13 dB from loud, already-distorted
-  signals.
-- **Phat** is a separate parallel leg (see below) instead of a crossfade
-  against the dry signal.
-
-### Phat mode
-
-- Parallel compression plus a low-shelf boost.
-- Low shelf: about 120 Hz, +8 dB (per CrushClone analysis).
-- The blend/fatness increases with Amount.
-- CrushJoints: the input is low-shelf boosted **before** a fixed heavy
-  compressor (-18 dB, 6:1, 5 ms / 100 ms), so the bass drives the detector and
-  comes out dense and sustained. Its output is crossfaded against the main
-  compressor (30% → 50% with Amount). CrushClone applied the shelf *after* the
-  compressor and crossfaded against the raw input, which made Phat quieter and
-  less bassy as Amount rose.
-- Can crackle at high levels on clean signals; the manual recommends turning it
-  off for clean signals such as clean guitar, and the FAQ suggests turning it
-  off if the output distorts.
-- Almost always left on for 808s and basses.
-
-> **Implementation note:** CrushJoints lets Phat affect the signal even when
-> Amount is 0, as long as the Compressor is enabled. CrushClone returns early
-> at Amount 0, which makes the Phat toggle appear inert. This is a deliberate
-> UX deviation.
+CrushJoints implements this model. The earlier CrushClone-derived Phat design is
+kept as an optional "Boom" stage that is not exposed yet (see
+[VERSION_2.md](VERSION_2.md)).
 
 ## 6. Master
 
@@ -389,21 +352,22 @@ bank.
 
 ### Filter
 
+- Sits between Mech and Tube.
 - Linear 2-pole (12 dB/octave) low-pass, 80 Hz–16 kHz, `Q = 1 + 6·Res`
-  (measured; a TPT SVF reproduces it).
+  (measured; a TPT SVF reproduces it). Cutoff and resonance ramp over 10 ms.
+- The original also has an output limiter that is **not implemented yet**
+  (MEASUREMENTS.md §5).
 - Resonance: `Q = 1 + 6·Res` (1 to 7), linear at all levels.
 - ZDF/TPT SVF is the recommended model.
 
 ### Compressor
 
-- One-knob soft-knee compressor with auto gain.
-- Threshold 0 → -30 dB, ratio 1:1 → 8:1, knee ≈ 6 dB.
-- Attack 1–10 ms, release 50–150 ms, both faster at higher Amount.
-- Makeup gain: restores the loss of the static curve at a -6 dBFS peak,
-  capped at +12 dB.
-- Phat: pre-compressor 120 Hz low shelf (+8 dB) into a fixed heavy parallel
-  leg.
-- `Amount` and Phat changes are smoothed over 20 ms.
+- Measured model, see section 5 and MEASUREMENTS.md §6: linked slew-limited
+  follower (48 ms / 80 ms per full scale; instant in Phat mode), gain `G` up to
+  a knee and `P(env)/env` above, instant attack and a 0.25 ms release ramp,
+  inputs clamped to ±3.3, Amount ramps over 10 ms.
+- The former CrushClone-derived design survives only as the hidden "Boom"
+  stage.
 
 ### Master
 
@@ -449,6 +413,9 @@ Milestone 1:
   (0.615 → 1.0). `American Crunch`
   Mix is 1.0 in the original, so the earlier "Mix = 0 anomaly" was a Rebuilt
   data error.
+- **Compressor and chain (2026-10-28):** the compressor, Phat mode and the
+  Mech → Filter → Tube → Compressor order were identified by black-box
+  measurement and are implemented in CrushJoints (MEASUREMENTS.md §6–7).
 - **Black-box measurements (2026-10-28)** corrected the Tube/Mech order
   (Mech first), the output limiter (hard clip at ±0.9999), the cutoff range
   (80 Hz–16 kHz) and the volume range (−∞ to 0 dB); the reverse-camel tables

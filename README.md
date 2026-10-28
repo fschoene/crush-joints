@@ -8,7 +8,7 @@ CrushJoints aims to be a faithful recreation of the CamelCrusher multi-effect
 plugin, featuring:
 - Tube and Mech distortion with the original polynomial coefficient tables
 - 24dB/octave low-pass filter with resonance
-- One-knob compressor with Phat mode
+- One-knob compressor with Phat mode (a measured model of the original)
 - Master volume and mix controls
 - Default preset at the top, plus 20 original and 11 CrushClone presets grouped into Legacy/Original, CrushClone and User categories
 - Saveable user presets in a separate User group
