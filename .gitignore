@@ -18,3 +18,9 @@ Makefile
 
 # Misc
 tmp/
+
+# Black-box analysis harness: local-only original plugin and build output
+tools/analysis/vst/
+tools/analysis/build/
+tools/analysis/data/
+__pycache__/
