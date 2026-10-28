@@ -101,9 +101,10 @@ namespace
         return s;
     }
 
-    // Complete Distortion -> Master reference path, mirroring the reverse-camel
-    // run() function (without its hard limiter, which is only relevant when the
-    // signal exceeds +/-2.0).
+    // Complete Distortion -> Master reference path using the reverse-camel
+    // tables. The stage order (Mech first, then Tube) and the +/-0.9999 hard
+    // clip were measured on the original plugin (docs/MEASUREMENTS.md); the
+    // reverse-camel run() loop applied Tube first.
     float referenceChain(float x, float tubeAmount, float mechAmount, float mix, float volumeDb)
     {
         const int tubeIndex = juce::jlimit(0, 100, static_cast<int>(tubeAmount * 100.0f));
@@ -112,18 +113,18 @@ namespace
         const float* t = CrushJoints::disttube_coeffs[tubeIndex];
         const float* m = CrushJoints::distmech_coeffs[mechIndex];
 
-        float s = t[0] * x;
-        float y = (s < -0.6f) ? (t[1] * s * s + t[2] * s + t[3])
-                : (s >  0.6f) ? (-t[1] * s * s + t[2] * s - t[3])
+        float s = m[0] * x;
+        float y = (s < -0.75f) ? (m[1] * s + m[2])
+                : (s >  0.75f) ? (m[1] * s - m[2])
                 : s;
 
-        s = m[0] * y;
-        y = (s < -0.75f) ? (m[1] * s + m[2])
-          : (s >  0.75f) ? (m[1] * s - m[2])
+        s = t[0] * y;
+        y = (s < -0.6f) ? (t[1] * s * s + t[2] * s + t[3])
+          : (s >  0.6f) ? (-t[1] * s * s + t[2] * s - t[3])
           : s;
 
         y = mix * y + (1.0f - mix) * x;
-        return y * juce::Decibels::decibelsToGain(volumeDb);
+        return juce::jlimit(-0.9999f, 0.9999f, y * juce::Decibels::decibelsToGain(volumeDb));
     }
 
     void testCoefficientTables()
@@ -133,6 +134,50 @@ namespace
         checkClose(CrushJoints::distmech_coeffs[0][0], 1.0f, 1.0e-6f, "mech entry 0 gain");
         checkClose(CrushJoints::distmech_coeffs[100][0], 11.0001f, 1.0e-3f, "mech entry 100 gain");
         checkClose(CrushJoints::distmech_coeffs[100][2], -0.731707f, 1.0e-5f, "mech entry 100 c");
+    }
+
+    // Output values recorded from the original plugin (DC input, steady state;
+    // tools/analysis, docs/MEASUREMENTS.md section 4). They are order
+    // sensitive: Tube -> Mech would give clearly different numbers.
+    void testDistortionMatchesOriginalMeasurements()
+    {
+        struct Case
+        {
+            float tube, mech;
+            float expected[8];
+        };
+
+        constexpr float inputs[8] = { -0.9f, -0.6f, -0.3f, -0.1f, 0.1f, 0.3f, 0.6f, 0.9f };
+
+        const Case cases[] = {
+            { 0.5f,  0.5f,  { -0.99949f, -0.99184f, -0.97500f, -0.90000f,
+                               0.90000f,  0.97500f,  0.99184f,  0.99949f } },
+            { 0.25f, 0.75f, { -0.99939f, -0.99018f, -0.96993f, -0.95029f,
+                               0.95029f,  0.96993f,  0.99018f,  0.99939f } },
+            { 1.0f,  0.5f,  { -0.99958f, -0.99325f, -0.97934f, -0.91736f,
+                               0.91736f,  0.97934f,  0.99325f,  0.99958f } },
+        };
+
+        for (const auto& c : cases)
+        {
+            CrushJoints::Distortion distortion;
+            distortion.prepareToPlay(48000.0);
+            distortion.setTubeOn(true);
+            distortion.setTubeAmount(c.tube);
+            distortion.setMechAmount(c.mech);
+
+            juce::AudioBuffer<float> buffer(1, 8);
+
+            for (int i = 0; i < 8; ++i)
+                buffer.setSample(0, i, inputs[i]);
+
+            distortion.processBlock(buffer);
+
+            for (int i = 0; i < 8; ++i)
+                checkClose(buffer.getSample(0, i), c.expected[i], 2.0e-3f,
+                           "original measurement tube " + juce::String(c.tube)
+                               + " mech " + juce::String(c.mech) + " sample " + juce::String(i));
+        }
     }
 
     void testDistortionReference()
@@ -568,8 +613,8 @@ namespace
             master.setMasterOn(true);
             master.processBlock(buffer, nullptr);
 
-            checkClose(buffer.getSample(0, 0), 2.0f, 1.0e-6f, "limiter clamps positive peak");
-            checkClose(buffer.getSample(0, 1), -2.0f, 1.0e-6f, "limiter clamps negative peak");
+            checkClose(buffer.getSample(0, 0), 0.9999f, 1.0e-6f, "limiter clamps positive peak");
+            checkClose(buffer.getSample(0, 1), -0.9999f, 1.0e-6f, "limiter clamps negative peak");
             check(buffer.getSample(0, 2) > 0.003f, "volume boost applied");
         }
 
@@ -746,6 +791,7 @@ int main()
 {
     testCoefficientTables();
     testDistortionReference();
+    testDistortionMatchesOriginalMeasurements();
     testReferenceAudioPath();
     testDistortionTransparencyAndBypass();
     testFilter();

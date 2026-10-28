@@ -120,7 +120,7 @@ Dense (1001-point) versions of these three tables are produced by
   ±0.9999 (no knee, no soft limiting) regardless of module settings, Mix or
   Volume. This was verified for modules off with a ±4 input, for Mix 0 % and 50 %,
   and for Volume 0.5 with a ±8 input. Clipping sits after volume and mix.
-  (CrushJoints currently limits at ±2.0.)
+  (CrushJoints limited at ±2.0 until 2026-10-28.)
 - **Volume of 1.0 means 0 dB, with no headroom boost**, so a hot signal can only
   be turned down, never up.
 
@@ -133,8 +133,10 @@ Dense (1001-point) versions of these three tables are produced by
 - **The stage order is Mech first, then Tube.** With both knobs engaged, the
   chain `tube(mech(x))` matches the plugin to RMS error 0.0001–0.0008 in five
   tested combinations; `mech(tube(x))` is off by 0.037–0.070, and summing or
-  averaging the stages is far worse. CrushJoints currently applies Tube then
-  Mech, which audibly changes the character at any setting where both are above 0.
+  averaging the stages is far worse. CrushJoints applied Tube then
+  Mech until 2026-10-28, which audibly changed the character at any setting where
+  both are above 0. `Tests/DSPTests.cpp` now holds recorded original outputs for
+  three Tube/Mech combinations.
 - The stages are memoryless (the same input value produces the same output on the
   rising and falling edge of a slow triangle).
 - Not yet measured: behaviour with signals fast enough to reveal oversampling or
@@ -159,8 +161,8 @@ In this order:
 
 | Finding | Current CrushJoints behaviour | Status |
 |---------|--------------------------------|--------|
-| Mech runs before Tube | Tube then Mech | open (fix follows) |
-| Output hard clip at ±0.9999 | limiter at ±2.0 | open (fix follows) |
+| Mech runs before Tube | Mech then Tube | fixed 2026-10-28 |
+| Output hard clip at ±0.9999 | hard clip at ±0.9999 | fixed 2026-10-28 |
 | Cutoff is 80 Hz – 16 kHz with a custom curve | 20 Hz – 20 kHz range; legacy presets use a 20 Hz – 20 kHz exponential map | open |
 | Volume is −∞ … 0 dB | −24 … +12 dB range, table starts at −60 dB | open |
 | Amount reads 0 … −40 dB | assumed threshold 0 … −30 dB | open, pending compressor measurement |

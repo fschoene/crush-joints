@@ -40,10 +40,10 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 | Plugin entry point | ✅ working | `createPluginFilter()` present |
 | Processor/buses/state | ✅ working | stereo + mono/mono + mono/stereo I/O; APVTS XML plus `currentProgram`, A/B slots and lock flags |
 | Parameter set | ✅ working | 12 parameters, editor attachments bound |
-| Distortion DSP | ✅ implemented | reverse-camel 101-entry Tube/Mech tables, Tube→Mech series, bypass |
+| Distortion DSP | ✅ implemented | reverse-camel 101-entry Tube/Mech tables, Mech→Tube series (measured order), bypass |
 | Filter DSP | ✅ implemented | ZDF/TPT SVF low-pass, Q 0.7071–4.2071, wide-open bypass |
 | Compressor DSP | ✅ implemented | peak envelope, soft knee, auto makeup, Phat parallel path |
-| Master DSP | ✅ implemented | dry/wet, volume, full bypass, ±2.0 limiter, NaN/Inf cleanup |
+| Master DSP | ✅ implemented | dry/wet, volume, full bypass, ±0.9999 hard clip (measured), NaN/Inf cleanup |
 | Oversampling | ⚠️ not in path | deliberate: matches reverse-camel, keeps dry/wet latency-free |
 | Factory presets | ✅ working | Default at the top outside the groups; 20 Legacy/Original + 11 CrushClone presets in groups |
 | User presets | ✅ working | User category, empty until saved; save, overwrite, delete in the editor; rename via host API; XML in user app data |
@@ -86,7 +86,8 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 - Plugin state is saved and restored as APVTS XML plus `currentProgram`, the
   two A/B snapshots and the seven lock flags.
 - Audio is processed through the full chain:
-  - **Distortion:** Tube table stage followed by Mech table stage, with the
+  - **Distortion:** Mech table stage followed by Tube table stage (the order
+    measured on the original), with the
     reference gain/polynomial formulas and linear interpolation between table
     entries. At amount 0 both stages are near-transparent; `tube_on` bypasses
     the whole stage.
@@ -101,7 +102,7 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
     (-18 dB, 6:1), crossfaded 30%→50% with Amount. Phat is audible at Amount 0
     as long as Compressor is on.
   - **Master:** optional dry/wet blend against a pre-effects copy, output
-    volume, full bypass when `master_on` is false, hard limiting at ±2.0 and
+    volume, full bypass when `master_on` is false, hard clipping at ±0.9999 (as measured on the original) and
     NaN/Inf sanitation.
 
 ## 4. Test results
@@ -111,14 +112,17 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 1. Coefficient table anchor values (Tube gain 1→4.99996, Mech gain 1→11.0001).
 2. Distortion output against an independent reference implementation for
    several input levels.
-3. The complete Distortion → Master path against a literal transcription of
-   reverse-camel's `run()` loop at several Tube/Mech/mix/volume settings.
+3. The complete Distortion → Master path against a reference chain built from
+   the reverse-camel tables (Mech → Tube, ±0.9999 clip) at several
+   Tube/Mech/mix/volume settings.
+3a. Distortion output against values recorded from the original plugin for
+   three Tube/Mech combinations (order-sensitive).
 4. Distortion transparency at amount 0 and bypass at `tube_on = false`.
 5. 10 kHz attenuation through a 1 kHz low-pass, plus filter bypass.
 6. Compressor gain reduction, finite output and bypass; level behaviour
    (transparent at Amount 0, makeup follows the curve) and Phat (bass tilt of
    +3…5 dB on a bass+treble mix, click-free automation).
-7. Master volume boost, ±2.0 limiting, full bypass and dry/wet mix.
+7. Master volume boost, ±0.9999 clipping, full bypass and dry/wet mix.
 8. The 32-preset factory bank (Default + 20 legacy + 11 grouped CrushClone),
    including the corrected Telephone flags, category assignment, legacy value
    conversion; values re-verified against the original factory `.fxb`
@@ -158,8 +162,8 @@ Ordered roughly by impact. Items marked "measured" come from black-box
 measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
 
 0. **Fidelity gaps found by measurement (2026-10-28).**
-   - Distortion order is Tube → Mech here; the original runs **Mech → Tube**.
-   - The output limiter is ±2.0 here; the original **hard-clips at ±0.9999**.
+   - ~~Distortion order~~ and ~~output clip level~~: fixed 2026-10-28 (Mech →
+     Tube; hard clip at ±0.9999).
    - Cutoff spans 20 Hz–20 kHz here; the original spans **80 Hz–16 kHz** with a
      custom curve. Legacy preset cutoffs use the wrong map.
    - Volume spans −24…+12 dB here; the original spans **−∞…0 dB**.

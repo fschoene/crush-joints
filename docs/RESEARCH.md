@@ -258,8 +258,8 @@ Notes:
   also mentions an **Output Level meter** in the main display that shows
   clipping.
 - CrushClone uses a safety limiter at ±2.0 (8× headroom). The original clips at
-  ±0.9999; CrushJoints should follow the original, plus NaN/Inf/denormal
-  sanitation (see STATUS.md for the current state).
+  ±0.9999; CrushJoints follows the original (since 2026-10-28), plus
+  NaN/Inf/denormal sanitation.
 
 ## 7. UI reference
 
@@ -432,7 +432,8 @@ Milestone 1:
   `soerenbnoergaard/reverse-camel` (`src/reverse-camel/ReverseCamel.cpp`). The
   101-entry tables in `Source/Common/CamelCrusherCoeffs.cpp` are copied from
   that file. `Tests/DSPTests.cpp` compares `Distortion + Master` against a
-  literal transcription of reverse-camel's `run()` loop.
+  reference chain built from those tables (Mech → Tube and ±0.9999 clip, as
+  measured on the original) and against values recorded from the original.
 - **Filter** behaviour follows CrushClone's MIT-licensed implementation (SVF
   low-pass with Q 0.7071–4.2071).
 - **Compressor** curve numbers follow CrushClone, but they are unverified

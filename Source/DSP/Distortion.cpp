@@ -107,10 +107,11 @@ namespace CrushJoints
         {
             float* data = buffer.getWritePointer(ch);
 
+            // Measured on the original: Mech runs first, Tube second.
             for (int i = 0; i < numSamples; ++i)
             {
-                const float tubeOut = shapeTube(data[i], tubeCoeffs);
-                data[i] = shapeMech(tubeOut, mechCoeffs);
+                const float mechOut = shapeMech(data[i], mechCoeffs);
+                data[i] = shapeTube(mechOut, tubeCoeffs);
             }
         }
     }

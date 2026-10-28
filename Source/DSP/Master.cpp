@@ -5,7 +5,8 @@ namespace CrushJoints
 {
     namespace
     {
-        constexpr float kLimiterCeiling = 2.0f; // 8x headroom above 0 dBFS
+        // Measured on the original: a hard clip at +/-0.9999 after volume and mix.
+        constexpr float kLimiterCeiling = 0.9999f;
     }
 
     Master::Master()

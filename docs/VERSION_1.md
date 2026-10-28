@@ -148,8 +148,9 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
 [`tools/analysis/`](../tools/analysis/README.md).
 
 - [x] Black-box harness: offline x86_64 VST2 host plus Python scripts.
-- [ ] Distortion order: Mech → Tube (measured).
-- [ ] Output clip: hard clip at ±0.9999 (measured).
+- [x] Distortion order: Mech → Tube (measured), with a test against recorded
+      original outputs.
+- [x] Output clip: hard clip at ±0.9999 (measured).
 - [ ] Cutoff: 80 Hz–16 kHz with the measured curve; fix the legacy preset
       conversion.
 - [ ] Volume: −∞…0 dB with the measured table; decide how to treat the

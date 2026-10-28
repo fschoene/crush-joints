@@ -142,11 +142,13 @@ Audio In
    Master receives the dry buffer so it can perform the dry/wet blend or a full
    bypass.
 
-Distortion always runs the reference Tube stage followed by the Mech stage.
+Distortion always runs the Mech stage followed by the Tube stage (the order
+measured on the original; see [MEASUREMENTS.md](MEASUREMENTS.md)).
 The filter bypasses itself when it is off, wide open and non-resonant. The
 compressor bypasses when it is off, or when Amount is near zero and Phat is
 off. Master applies the
-mix, volume, a hard ±2.0 limiter and NaN/Inf sanitation.
+mix, volume, a hard clip at ±0.9999 (measured on the original) and NaN/Inf
+sanitation.
 
 There is currently **no oversampling** in the signal path, matching the
 reverse-camel reference and keeping the dry/wet path free of latency. The
@@ -314,7 +316,9 @@ verifies:
 - coefficient table dimensions and anchor values,
 - the Tube/Mech waveshapers against an independent transcription of the
   reverse-camel formulas,
-- the complete Distortion → Master path against reverse-camel's `run()` loop,
+- the complete Distortion → Master path against a reference chain built from
+  the reverse-camel tables (Mech → Tube, ±0.9999 clip),
+- the Distortion stage against values recorded from the original plugin,
 - distortion transparency at amount 0 and bypass at `tube_on = false`,
 - low-pass attenuation and filter bypass,
 - compressor gain reduction, finite output and bypass,
