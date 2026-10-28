@@ -140,28 +140,29 @@ Characteristics:
 
 - Described by the manual as a "warm, smooth analogue-style low-pass filter,
   with buckets of resonance" and an "analogue-modelled resonant low-pass
-  filter". The manual does **not** state the slope. The 24 dB/octave (4-pole)
-  figure is an assumption from reviews and CrushClone.
+  filter". The manual does **not** state the slope. Measurement shows a
+  **linear 2-pole (12 dB/octave) low-pass biquad with `Q = 1 + 6·Res`**
+  (MEASUREMENTS.md §5); the 24 dB/octave (4-pole) figure from reviews and
+  CrushClone is wrong.
 - The manual only says Cutoff "sets the filter Cutoff point, in Hz" (example
   readout `71.7 Hz`) and gives **no range**. The plugin's own display strings
   show **80 Hz at the bottom and 16 kHz at the top**, with a non-exponential curve
   (about 1.3 kHz at the midpoint, 5.3 kHz at 0.95; see MEASUREMENTS.md §2). This
   confirms the YouTube analysis and replaces our earlier 20 Hz–20 kHz
-  assumption. Whether the displayed value equals the actual filter cutoff is not
-  measured yet.
+  assumption. The displayed value equals the actual filter cutoff.
 - The original binary contains several filter classes (biquad, `MoogAFilter`,
   `MS20AFilter`, `OTAAFilter`, `SVFAFilter`, comb, ring-mod and others), which
-  looks like a library shared with CamelPhat. Which one CamelCrusher's `MmFilter`
-  uses is not known yet; the `Mm` prefix may hint at a Moog-style design.
-- Resonance emphasises the cutoff and can be pushed into a scream; it has a
-  slightly analog character.
+  looks like a library shared with CamelPhat. The measured response is a plain
+  biquad (`CAFilterBiquad`-like), not a Moog/MS20/OTA model.
+- Resonance peaks the cutoff by up to +16.9 dB (Q = 7) without any passband
+  loss and without saturation.
 - The filter's job is cleanup: distortion creates new high harmonics and the
   filter tames them.
 
-The original is a resonant low-pass; CrushClone models it with JUCE's
-`StateVariableTPTFilter` (ZDF/TPT SVF) in low-pass mode. Reverse-camel does not
-implement the filter. The 4-pole slope and "warm" description suggest a
-Moog-style ladder or a state-variable design with nonlinear resonance.
+The original is a resonant 2-pole low-pass; CrushClone models it with JUCE's
+`StateVariableTPTFilter` (ZDF/TPT SVF) in low-pass mode, which has the same
+magnitude response as the bilinear biquad that was measured. Reverse-camel does
+not implement the filter.
 
 ## 5. Compressor
 
@@ -388,9 +389,9 @@ bank.
 
 ### Filter
 
-- 24 dB/octave low-pass (slope unverified), 80 Hz–16 kHz (measured display
-  range).
-- Resonance 0 to about 5, nonlinear at high settings.
+- Linear 2-pole (12 dB/octave) low-pass, 80 Hz–16 kHz, `Q = 1 + 6·Res`
+  (measured; a TPT SVF reproduces it).
+- Resonance: `Q = 1 + 6·Res` (1 to 7), linear at all levels.
 - ZDF/TPT SVF is the recommended model.
 
 ### Compressor
@@ -434,8 +435,9 @@ Milestone 1:
   that file. `Tests/DSPTests.cpp` compares `Distortion + Master` against a
   reference chain built from those tables (Mech → Tube and ±0.9999 clip, as
   measured on the original) and against values recorded from the original.
-- **Filter** behaviour follows CrushClone's MIT-licensed implementation (SVF
-  low-pass with Q 0.7071–4.2071).
+- **Filter** behaviour followed CrushClone's MIT-licensed implementation (SVF
+  low-pass with Q 0.7071–4.2071); measurement showed the topology is right but
+  the Q range should be 1–7 (MEASUREMENTS.md §5).
 - **Compressor** curve numbers follow CrushClone, but they are unverified
   against the original (see section 5). Makeup gain and the Phat topology were
   re-designed in CrushJoints after measuring CrushClone's behaviour.

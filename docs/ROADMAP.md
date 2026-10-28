@@ -17,7 +17,7 @@ version plans live in [VERSION_1.md](VERSION_1.md) and
 ### Version 1 at a glance
 
 - Tube + Mech distortion using the reverse-camel coefficient tables.
-- 24 dB/oct SVF low-pass filter with resonance.
+- 2-pole SVF low-pass filter with resonance.
 - One-knob compressor with Phat parallel path.
 - Master volume, mix, safety limiter and full bypass.
 - Default preset at the top outside the groups, plus the original 20-program

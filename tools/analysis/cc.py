@@ -23,6 +23,12 @@ BASE = {P["DistOn"]: 0, P["Mech"]: 0, P["Tube"]: 0, P["FiltOn"]: 0, P["Cutoff"]:
 # The plugin fades in for ~10 ms after start; discard at least this many frames.
 WARMUP = 4410
 
+# The Filter stays bypassed until the plugin has seen input above roughly 1e-5
+# (an impulse in otherwise digital silence passes unfiltered). render() therefore
+# primes the plugin with a short low-level noise burst and discards it again.
+PRIME_FRAMES = 4410
+PRIME_LEVEL = 1e-3
+
 
 def _run_host(args):
     env = dict(os.environ)
@@ -30,16 +36,25 @@ def _run_host(args):
                           env=env, capture_output=True, text=True)
 
 
-def render(x, params=None, sr=44100, block=512, events=()):
-    """Render x (n, 2) float32 through the plugin.
+def render(x, params=None, sr=44100, block=512, events=(), prime=True):
+    """Render x (n, 2) float32 through the plugin; returns n frames.
 
     params: dict name -> normalised value, applied on top of BASE before rendering.
     events: iterable of (frame, name, value) applied at block boundaries.
+    prime: prepend a quiet noise burst (see PRIME_FRAMES) and drop it from the output,
+           so the plugin is awake and past its fade-in when x starts.
     """
     p = dict(BASE)
     for k, v in (params or {}).items():
         p[P[k]] = v
     x = np.ascontiguousarray(x, dtype=np.float32)
+    offset = 0
+    if prime:
+        rng = np.random.default_rng(12345)
+        burst = (PRIME_LEVEL * rng.standard_normal((PRIME_FRAMES, 2))).astype(np.float32)
+        x = np.concatenate([burst, x])
+        offset = PRIME_FRAMES
+        events = [(f + offset, k, v) for f, k, v in events]
     with tempfile.TemporaryDirectory() as d:
         i = os.path.join(d, "i.f32")
         o = os.path.join(d, "o.f32")
@@ -50,7 +65,7 @@ def render(x, params=None, sr=44100, block=512, events=()):
         for f, k, v in events:
             cmd += ["--setat", f"{f}:{P[k]}={v}"]
         _run_host(cmd)
-        return np.fromfile(o, dtype=np.float32).reshape(-1, 2)
+        return np.fromfile(o, dtype=np.float32).reshape(-1, 2)[offset:]
 
 
 def sweep_display(index, steps=100):

@@ -41,7 +41,7 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 | Processor/buses/state | ✅ working | stereo + mono/mono + mono/stereo I/O; APVTS XML plus `currentProgram`, A/B slots and lock flags |
 | Parameter set | ✅ working | 12 parameters, editor attachments bound |
 | Distortion DSP | ✅ implemented | reverse-camel 101-entry Tube/Mech tables, Mech→Tube series (measured order), bypass |
-| Filter DSP | ✅ implemented | ZDF/TPT SVF low-pass, Q 0.7071–4.2071, wide-open bypass |
+| Filter DSP | ✅ implemented | ZDF/TPT SVF low-pass (2-pole), Q 0.7071–4.2071 (original: Q 1–7), wide-open bypass |
 | Compressor DSP | ✅ implemented | peak envelope, soft knee, auto makeup, Phat parallel path |
 | Master DSP | ✅ implemented | dry/wet, volume, full bypass, ±0.9999 hard clip (measured), NaN/Inf cleanup |
 | Oversampling | ⚠️ not in path | deliberate: matches reverse-camel, keeps dry/wet latency-free |
@@ -91,7 +91,7 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
     reference gain/polynomial formulas and linear interpolation between table
     entries. At amount 0 both stages are near-transparent; `tube_on` bypasses
     the whole stage.
-  - **Filter:** 24 dB/oct state-variable low-pass. Resonance 0..1 maps to
+  - **Filter:** 2-pole (12 dB/oct) state-variable low-pass. Resonance 0..1 maps to
     Q 0.7071..4.2071. The block is skipped when the filter is off, or when
     cutoff ≥ 18 kHz with resonance < 0.05.
   - **Compressor:** peak detector across channels, one-pole attack/release
@@ -169,7 +169,12 @@ measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
    - Volume spans −24…+12 dB here; the original spans **−∞…0 dB**.
    - Compressor Amount is displayed by the original as 0…−40 dB; our threshold
      curve ends at −30 dB.
-   - Filter and compressor internals are still unmeasured guesses.
+   - Filter: the original is a linear 2-pole biquad with `Q = 1 + 6·Res`; ours
+     uses Q 0.7071–4.2071. Only the Q range differs.
+   - Compressor and Phat: the original's low-level gain is 0…+40 dB
+     (`−20·log10(1−0.99·Amount)`) with fast dynamics and no Phat bass shelf;
+     our design (threshold 0…−30 dB, 120 Hz +8 dB shelf) is a guess and does not
+     match. Still being measured.
 
 1. **No host validation yet.** `pluginval`, `auval` and DAW testing have not
    been run. Offline tests and a Standalone launch are the only verification.

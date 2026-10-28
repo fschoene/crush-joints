@@ -155,8 +155,9 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
       conversion.
 - [ ] Volume: −∞…0 dB with the measured table; decide how to treat the
       CrushClone presets that use positive gain.
-- [ ] Measure and match the filter (response, resonance, level dependence).
-- [ ] Measure and match the compressor and Phat.
+- [x] Measure the filter (linear 2-pole biquad, `Q = 1 + 6·Res`); [ ] match the
+      Q range and the cutoff map in code.
+- [ ] Measure and match the compressor and Phat (preliminary data only).
 - [ ] Add regression tests that compare against recorded measurements.
 
 ## Milestone 4 — Validation and release (pending)

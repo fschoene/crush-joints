@@ -30,6 +30,9 @@ not find it. The VST2 bundle loads directly through `CFBundle`.
 | `refs.py` | reverse-camel Tube/Mech reference, parsed from `Source/Common/CamelCrusherCoeffs.cpp` |
 | `check_host.py` | Harness sanity: bypass, unity, determinism, latency, clip level |
 | `check_distortion.py` | Tube/Mech static curves and chain order |
+| `check_filter.py` | Fits the filter response to a bilinear 2-pole biquad; reports fc, Q and linearity |
+| `check_master.py` | Mix law and where volume acts |
+| `measure_mappings.py` | Real Volume gain and Cutoff frequency at 101 knob positions |
 | `dump_param_displays.py` | Cutoff/Volume/Amount display strings to `data/` |
 | `fxb_compare.py` | Parse the original `CamelCrusherPresetsA.fxb` and diff it against `Presets.cpp` |
 
@@ -47,8 +50,9 @@ arch -x86_64 build/vsthost info
 
 ## Measurement notes
 
-- The plugin fades in over about 10 ms after start; discard the first
-  `WARMUP` (4410) frames. `check_*` scripts use a silent lead-in.
+- The plugin fades in over about 10 ms after start and keeps its Filter bypassed
+  until it has seen input above ~1e-5. `render()` therefore prepends a quiet
+  noise burst and removes it from the result (`prime=True`, the default).
 - Output is hard-clipped at ±0.9999, so use amplitudes and gains that stay
   below that when measuring linear behaviour.
 - Parameters are normalised 0..1 and quantised internally (about 1e-3 error
