@@ -96,7 +96,8 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
 **Status:** completed.
 
 - [x] Add the original 20-program CamelCrusher factory bank decoded in
-      [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md).
+      [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md) (re-verified against
+      the original `.fxb` on 2026-10-28).
 - [x] Map legacy normalized cutoff and master-volume values to our parameter
       ranges; keep tube/mech/res/amount/mix and switch values direct.
 - [x] Keep the current 11 CrushClone presets as a separate group, with Default
@@ -109,8 +110,9 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
       it.
 - [x] Keep group headings display-only; program indices remain stable and
       existing program/state behaviour is preserved.
-- [x] **American Crunch:** use Mix = 100% wet as a deliberate manual correction.
-      The legacy chunk stores 0; this deviation is recorded in code.
+- [x] **American Crunch / British Clean mix:** both are 100% wet in the
+      original `CamelCrusherPresetsA.fxb`. The earlier "Mix = 0" override was a
+      data error in the external research and was removed (2026-10-28).
 - [x] Tests:
       all 20 original presets load with expected converted values,
       Default sits outside the groups and the other groups have the expected

@@ -113,7 +113,8 @@ appropriate acceptance criteria.
 - Original parameter order/IDs and legacy chunk import/export (v2 or separate
   compatibility work).
 - Same-identity VST2 session recall (`CaCr`, 17 parameters, 20 programs,
-  chunk state) — larger separate compatibility project.
+  chunk state) — larger separate compatibility project. The original AU is
+  `aumf` / `CaCr` / `CamA`.
 - Original UI geometry/assets for pixel-exact styling (v2; artwork and
   trademark review required).
 

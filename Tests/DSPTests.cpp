@@ -679,13 +679,13 @@ namespace
 
             const auto americanCrunch = presets.getPreset(13);
             check(americanCrunch.name == "American Crunch", "American Crunch name");
-            checkClose(americanCrunch.mix, 1.0f, 1.0e-6f, "American Crunch uses 100% wet");
+            checkClose(americanCrunch.mix, 1.0f, 1.0e-6f, "American Crunch mix matches the factory FXB (100% wet)");
 
             const auto britishClean = presets.getPreset(15);
             check(britishClean.name == "British Clean", "British Clean name");
             checkClose(britishClean.cutoff, 20000.0f, 1.0e-3f, "British Clean open cutoff");
             check(! britishClean.phat, "British Clean Phat is off");
-            checkClose(britishClean.mix, 0.615f, 1.0e-6f, "British Clean mix");
+            checkClose(britishClean.mix, 1.0f, 1.0e-6f, "British Clean mix matches the factory FXB (100% wet)");
 
             check(presets.getPreset(10).name == "Telephone", "Telephone preset name");
             check(presets.getPreset(10).lpfOn, "Telephone filter is on");

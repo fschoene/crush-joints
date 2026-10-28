@@ -15,3 +15,6 @@ Makefile
 # Editors
 .idea/
 .vscode/
+
+# Misc
+tmp/

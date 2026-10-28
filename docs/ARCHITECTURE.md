@@ -319,7 +319,7 @@ verifies:
 - master volume, limiter, bypass and dry/wet mix,
 - the preset bank, including the Telephone flags,
 - the 32-preset factory bank, Default placement and category assignment,
-- original-preset conversion, including the 100%-wet American Crunch override,
+- original-preset conversion, including the factory-FXB mix values,
 - custom preset save/overwrite/rename/delete and XML round-trip through a
   temporary file.
 

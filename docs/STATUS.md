@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: **2026-10-27**.
+Last updated: **2026-10-28**.
 
 This is a factual snapshot of the repository, verified by building, running
 the offline tests and launching the Standalone app. It supersedes the old
@@ -121,7 +121,8 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 7. Master volume boost, ±2.0 limiting, full bypass and dry/wet mix.
 8. The 32-preset factory bank (Default + 20 legacy + 11 grouped CrushClone),
    including the corrected Telephone flags, category assignment, legacy value
-   conversion and the 100%-wet American Crunch override.
+   conversion; values re-verified against the original factory `.fxb`
+   (2026-10-28), including American Crunch and British Clean at 100% wet.
 9. Custom preset save/overwrite/rename/delete and XML round-trip through a
    temporary file, including User-category assignment.
 
@@ -184,9 +185,12 @@ Ordered roughly by impact.
 9. **User presets are a single XML bank.** There is no import/export, search,
    filter or sorting UI. Corrupt or unreadable files are ignored gracefully,
    leaving the factory bank available.
-10. **Original preset conversion is provisional.** Cutoff uses a 20 Hz–20 kHz
+10. **Original preset conversion is provisional.** The 20 raw preset values
+    match the original `CamelCrusherPresetsA.fxb`, but cutoff uses a 20 Hz–20 kHz
     exponential map and volume uses the reverse-camel stepped dB table. The
-    exact original curves are not measured; verify before release.
+    original manual gives no ranges or curves (only example readouts
+    `71.7 Hz` and `-40 dB`); the exact curves are not measured; verify before
+    release.
 11. **Program indices changed with Milestone 4a.** Default is 0, CrushClone
     1–11, Legacy/Original 12–31 and User starts at 32. States saved before this
     change keep their parameter values but may display a different current

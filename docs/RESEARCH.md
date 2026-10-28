@@ -6,22 +6,30 @@ state, see [STATUS.md](STATUS.md).
 
 ## 1. Overview
 
-**CamelCrusher** is a free multi-effect plugin by **Camel Audio** (founded by
-Ben Gillett). Released as v1.0 around 2007, it was the "little brother" of the
-paid **CamelPhat** multi-band distortion/compressor. Camel Audio was acquired
-by Apple in 2015 and the plugins were discontinued; CamelPhat's technology was
-folded into Logic Pro's **Phat FX**.
+**CamelCrusher** is a free multi-effect plugin by **Camel Audio** (concept,
+design and programming credited to Ben Gillett in the manual). The manual is
+"Version 1.0", © 2005; the original VST bundle is 1.01 (2006) and the Mac
+installer is labelled 1.4 (2011). It was the "little brother" of the paid
+**CamelPhat** distortion/compressor (the manual advertises CamelPhat 3). Camel
+Audio was acquired by Apple in 2015 and the plugins were discontinued;
+CamelPhat's technology was folded into Logic Pro's **Phat FX**.
 
 CamelCrusher is a single-window, four-module colouring effect: intentionally
-simple, with one knob per parameter and no hidden menus. Its character comes
-from the interaction between Tube distortion, Mech distortion, a low-pass
-filter and a one-knob compressor with Phat mode. The original shipped as VST,
-AU and AAX for 32- and 64-bit Windows and macOS.
+simple, with one knob per parameter. Its character comes from the interaction
+between Tube distortion, Mech distortion, a low-pass filter and a one-knob
+compressor with Phat mode. The manual counts **three effect modules**
+(Distortion, Filter, Compressor) plus the Master module. The original shipped as
+VST on Windows and VST/AU on macOS; the 2011 Mac installer also contains an RTAS
+build. All Mac binaries are universal (ppc7400, i386, x86_64); no AAX build is in
+the installer.
 
 ## 2. Signal chain
 
-Confirmed by the original manual, the CrushClone recreation and black-box
-analysis:
+The module order is **not stated in the original manual**; it only lists the
+modules. The order below follows reverse-camel (Distortion → Master) and
+CrushClone, and matches the module and parameter order in the original binary
+and skin (Dist, Filter, Compressor, Master). Filter and compressor order is not
+independently verified:
 
 ```
 Audio In
@@ -34,7 +42,8 @@ Audio In
 
 Each module has an individual blue On/Off toggle. Turning a module off bypasses
 it. Turning **Master** off bypasses the whole plugin, leaving only the dry
-input.
+input (manual, page 12). The manual's Distortion text says the two types "are
+not exclusive", so Tube and Mech can be blended.
 
 ## 3. Distortion
 
@@ -46,7 +55,10 @@ input.
 | MECH | 0–100 | 0 | Mechanical/harsh distortion amount |
 
 Tube and Mech are not exclusive; they can be blended. Most of CamelCrusher's
-character lives in that blend.
+character lives in that blend. The manual describes Tube as "a warm and
+musical, analogue-style overdrive" and Mech as "a bit nastier (hint: it's great
+for booming kick drums)". The manual states no ranges or defaults; the 0–100
+range matches the `%` readout it mentions.
 
 ### Tube distortion (DistTube)
 
@@ -117,15 +129,22 @@ rate, matching reverse-camel and keeping the dry/wet path latency-free. The
 
 | Control | Range | Default | Description |
 |---------|-------|---------|-------------|
-| CUTOFF | 20–20,000 Hz | 20,000 (open) | Low-pass cutoff |
-| RES | 0–100 (≈0–5 effective Q) | 0 | Resonance around the cutoff |
+| CUTOFF | 20–20,000 Hz (assumed, see below) | 20,000 (open) | Low-pass cutoff, shown in Hz |
+| RES | 0–100 (≈0–5 effective Q, assumed) | 0 | Resonance around the cutoff |
 
 Characteristics:
 
-- 24 dB/octave (4-pole) low-pass, described as "warm, smooth, analogue-style"
-  with "buckets of resonance".
-- Cutoff is reported as 80 Hz–16 kHz in one YouTube analysis; the manual range
-  appears to be 20 Hz–20 kHz.
+- Described by the manual as a "warm, smooth analogue-style low-pass filter,
+  with buckets of resonance" and an "analogue-modelled resonant low-pass
+  filter". The manual does **not** state the slope. The 24 dB/octave (4-pole)
+  figure is an assumption from reviews and CrushClone.
+- The manual only says Cutoff "sets the filter Cutoff point, in Hz" (example
+  readout `71.7 Hz`). It gives **no range**. One YouTube analysis reports
+  80 Hz–16 kHz; 20 Hz–20 kHz is our assumption, unmeasured.
+- The original binary contains several filter classes (biquad, `MoogAFilter`,
+  `MS20AFilter`, `OTAAFilter`, `SVFAFilter`, comb, ring-mod and others), which
+  looks like a library shared with CamelPhat. Which one CamelCrusher's `MmFilter`
+  uses is not known yet; the `Mm` prefix may hint at a Moog-style design.
 - Resonance emphasises the cutoff and can be pushed into a scream; it has a
   slightly analog character.
 - The filter's job is cleanup: distortion creates new high harmonics and the
@@ -145,8 +164,11 @@ Moog-style ladder or a state-variable design with nonlinear resonance.
 
 Characteristics:
 
-- The manual describes a "sophisticated and responsive soft-limiting
-  compressor algorithm, modelled after classic analogue designs".
+- The manual describes a "sophisticated and responsive 'soft-limiting'
+  compressor algorithm, modelled after the classic analogue compressor designs
+  renowned in studio folklore", with two parameters: Amount ("the amount of
+  compression applied to the sound, and thus the apparent 'loudness'") and the
+  **P** (Phat) button.
 - One knob drives threshold, ratio, attack, release and makeup gain together.
   - Amount 0 → threshold 0 dB, ratio 1:1 (no compression).
   - Amount 100 → threshold ≈ -30 dB, ratio ≈ 8:1 (heavy squash).
@@ -156,7 +178,10 @@ Characteristics:
 
 **Provenance warning.** No source documents the original's algorithm. The
 manual only says "sophisticated and responsive soft-limiting compressor", and
-reviewers describe it as OTT-like, dense and not subtle. The threshold, ratio,
+reviewers describe it as OTT-like, dense and not subtle. The manual says
+nothing about parallel processing or a low shelf for Phat; its only statement is
+that turning **P** off gives "smoother" results on clean signals and avoids
+"occasional crackles at high levels". The threshold, ratio,
 attack/release, knee and Phat numbers in this document come from CrushClone,
 whose own README calls it "a clean-room recreation of the concept". They are
 plausible design targets, not measurements of the original.
@@ -184,7 +209,8 @@ one-pole attack/release, soft-knee gain computer; attack 10→1 ms, release
   compressor and crossfaded against the raw input, which made Phat quieter and
   less bassy as Amount rose.
 - Can crackle at high levels on clean signals; the manual recommends turning it
-  off for clean guitar.
+  off for clean signals such as clean guitar, and the FAQ suggests turning it
+  off if the output distorts.
 - Almost always left on for 808s and basses.
 
 > **Implementation note:** CrushJoints lets Phat affect the signal even when
@@ -197,7 +223,7 @@ one-pole attack/release, soft-knee gain computer; attack 10→1 ms, release
 | Control | Range | Default | Description |
 |---------|-------|---------|-------------|
 | ON/OFF | Toggle | On | Bypasses the entire plugin (dry only) |
-| VOLUME | -51 to 0 dB (reference) | 0 (unity) | Output level |
+| VOLUME | -51 to 0 dB (reverse-camel; not in the manual) | 0 (unity) | Output level, shown in dB |
 | MIX | 0–100% | 100% (wet) | Dry/wet blend |
 
 > **Implementation note:** the plugin's Volume parameter uses **-24 to
@@ -210,8 +236,10 @@ Notes:
 - Volume can go from silence to unity and is used for gain staging.
 - Mix is arguably the most important control; 30–60% often sounds better than
   fully wet and enables parallel processing from one plugin.
-- The original applies hard output limiting, which can distort hot signals.
-  Turning down Volume or disabling Phat resolves it.
+- The original applies hard output limiting, which can distort hot signals
+  (manual FAQ). Turning down Volume or disabling Phat resolves it. The manual
+  also mentions an **Output Level meter** in the main display that shows
+  clipping.
 - CrushJoints follows CrushClone's safety limiter at ±2.0 (8× headroom) plus
   NaN/Inf/denormal sanitation.
 
@@ -243,17 +271,42 @@ Reference features:
   module, and avoids settings that produce no sound.
 - **On/Off switches:** small blue toggles at the top-left of each module;
   illuminated when active.
-- **Value readout:** shows the preset name, temporarily shows a knob's value
-  while it is adjusted; clicking it opens preset load/save.
+- **Value readout:** shows the preset name; while a knob is adjusted it shows
+  the value (for example `75 %`, `1.3 Hz`) and the preset name returns after
+  about three seconds. Clicking it opens a menu: Load/Save Preset, Load/Save
+  Bank, Load Bank A, Load Bank B and Clear Preset (resets all parameters to
+  their defaults). Up/down arrows step through patches.
 - **Output meter:** indicates clipping.
-- **Knob modes:** right-click menu for Linear/Circular drag, MIDI Learn and
-  value display.
-- **Presets:** the original has ~20 built-in patches and supports `.FXP`/`.FXB`
-  import/export.
+- **Knob modes:** right-click (Ctrl-click on Mac) menu with four items:
+  Display Value, MIDI Learn, Linear and Circular. Linear (vertical drag) is the
+  default and the choice applies to all knobs. Shift-drag gives fine control.
+- **Presets:** the factory bank installed with the Mac installer has 20
+  programs (`CamelCrusherPresetsA.fxb`). The manual says there are two default
+  banks (A and B) and that a saved bank holds 64 sounds; Bank B is not in the
+  installer we have. `.FXP`/`.FXB` import/export is supported.
+- **Skin geometry:** the original panel is 345×373 px; control positions are in
+  `Skins/default/SkinParameters.txt` (Tube left of Mech, Cutoff left of Res,
+  Volume left of Mix).
 
 ## 8. Presets
 
-The 12 patches used by CrushClone and CrushJoints:
+### Original factory bank
+
+The original 20-program factory bank (Annihilate … Turn it to 11) is documented
+in [CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md) section 4 and was checked
+against the original `CamelCrusherPresetsA.fxb`. The 20 Legacy/Original presets
+in CrushJoints match it value for value (see section 12).
+
+### CrushClone patches
+
+The 12 patches used by CrushClone and CrushJoints. **These are not the original
+factory presets**; only the name `DRM BigBadBeat` appears in the original
+material (the manual's screenshot shows it as the active patch, so it comes from
+a bank we do not have, presumably Bank B or an earlier version). The screenshot
+shows knob positions that look quite different from CrushClone's values (Tube
+and Mix far clockwise, Mech and Amount roughly two o'clock, Volume near the
+top); that is a visual reading, not a measurement, but it suggests CrushClone's
+values for this patch are invented.
 
 | Preset | Tube | Mech | Cutoff | Res | Amount | Phat | Filter on | Volume (dB) | Mix |
 |--------|------|------|--------|-----|--------|------|-----------|-------------|-----|
@@ -270,10 +323,9 @@ The 12 patches used by CrushClone and CrushJoints:
 | Telephone | 10 | 0 | 3500 | 30 | 0 | off | yes | 0 | 100 |
 | Destroy Everything | 100 | 100 | 1000 | 70 | 80 | on | yes | -4 | 100 |
 
-Other sources mention patches named "Dream", "Annihilate" and "YouWereWarned".
-These are not in the current 12-preset bank; the original 20-program factory
-bank has been decoded separately in
-[CAMELCRUSHER_REBUILT.md](CAMELCRUSHER_REBUILT.md).
+The patches "Dream", "Annihilate" and "YouWereWarned" are part of the original
+factory bank (confirmed in `CamelCrusherPresetsA.fxb`), not of this 12-preset
+bank.
 
 ## 9. References
 
@@ -364,6 +416,16 @@ Milestone 1:
   re-designed in CrushJoints after measuring CrushClone's behaviour.
 - **Presets** were checked against CrushClone's `initPresets()`. The
   `Telephone` flags were corrected (filter on, compressor off).
+- **Legacy/Original presets** were re-checked against the original
+  `CamelCrusherPresetsA.fxb` (2026-10-28): 20 names and all 11 compared
+  parameters per preset match exactly after correcting `British Clean` Mix
+  (0.615 → 1.0). `American Crunch`
+  Mix is 1.0 in the original, so the earlier "Mix = 0 anomaly" was a Rebuilt
+  data error.
+- **Manual cross-check (2026-10-28):** corrected the release year (2005, not
+  2007), the format list (no AAX), the claim that the manual confirms the signal
+  order, the filter slope, the cutoff range and the Phat description (none are in
+  the manual), and added the readout/menu/knob-mode details.
 - **Oversampling:** the claim that the original does not oversample was not
   independently verified, but reverse-camel does not oversample and neither
   does the current CrushJoints path.

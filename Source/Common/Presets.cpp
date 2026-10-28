@@ -23,14 +23,14 @@ namespace CrushJoints
         };
 
         // Original 20-program factory bank. Values are the normalized VST2
-        // parameters decoded from the legacy chunk; the cutoff/volume mappings
-        // are provisional and documented in docs/CAMELCRUSHER_REBUILT.md.
+        // parameters from the original CamelCrusherPresetsA.fxb (verified
+        // 2026-10-28); the cutoff/volume mappings are provisional and
+        // documented in docs/CAMELCRUSHER_REBUILT.md.
         constexpr LegacyPresetData kLegacyPresets[] = {
             { "Annihilate",        1, 0.000f, 0.340f, 0, 0.350f, 0.050f, 1, 0.905f, 1, 1.000f, 0.780f },
-            // The legacy chunk stores Mix = 0 here; we intentionally use 100% wet.
             { "American Crunch",   1, 0.280f, 1.000f, 1, 1.000f, 0.475f, 1, 0.815f, 1, 1.000f, 0.655f },
             { "American HiGain",   1, 1.000f, 1.000f, 1, 0.445f, 0.725f, 1, 0.815f, 1, 1.000f, 0.605f },
-            { "British Clean",     1, 0.050f, 0.075f, 1, 1.000f, 0.000f, 1, 0.710f, 0, 0.615f, 0.840f },
+            { "British Clean",     1, 0.050f, 0.075f, 1, 1.000f, 0.000f, 1, 0.710f, 0, 1.000f, 0.840f },
             { "British Crunch",    1, 0.280f, 1.000f, 1, 1.000f, 0.050f, 1, 0.815f, 1, 1.000f, 0.645f },
             { "British HiGain",    1, 1.000f, 1.000f, 1, 1.000f, 1.000f, 1, 1.000f, 1, 1.000f, 0.640f },
             { "Bass Maker",        1, 0.020f, 0.625f, 1, 0.170f, 0.125f, 1, 0.725f, 1, 1.000f, 0.775f },
