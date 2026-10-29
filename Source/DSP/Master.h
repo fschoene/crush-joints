@@ -6,7 +6,13 @@ namespace CrushJoints
 {
     /**
         Output stage: dry/wet mix, volume, full bypass and a hard safety
-        limiter at +/-2.0 with NaN/Inf sanitation.
+        limiter at +/-0.9999 with NaN/Inf sanitation.
+
+        Mix and volume ramp linearly over 10 ms, as measured on the original.
+        The original ramps the knob value, not the dB value, so the volume
+        ramp is applied to the equivalent knob position and the measured
+        gain law (gain = knob^2.737) is evaluated on every sample while it
+        moves.
     */
     class Master
     {
@@ -27,11 +33,21 @@ namespace CrushJoints
         void setMasterOn(bool on);
 
     private:
+        void snapToTargets();
+
         float volume = 0.0f;    // -24 dB to +12 dB
         float mix = 1.0f;       // 0 = dry, 1 = wet
         bool masterOn = true;
 
+        // Volume as the original's knob position, where gain = knob^2.737.
+        float volumeKnob = 1.0f;
         float volumeGain = 1.0f;
 
+        double sampleRate = 44100.0;
+        juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> smoothedVolume;
+        juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> smoothedMix;
+
+        bool needsSnap = true;
+        bool wasOn = false;
     };
 }

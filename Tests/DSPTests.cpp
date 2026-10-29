@@ -710,6 +710,77 @@ namespace
             for (int i = 0; i < 8; ++i)
                 checkClose(wet.getSample(0, i), 0.25f, 1.0e-6f, "dry/wet mix");
         }
+
+        // Volume and mix ramp linearly in the knob value over 10 ms, as measured
+        // on the original (441 samples at 44.1 kHz).
+        {
+            constexpr double sampleRate = 44100.0;
+            constexpr int rampSamples = 441;
+            constexpr float input = 0.1f;
+            const float knob12 = std::pow(juce::Decibels::decibelsToGain(12.0f), 1.0f / 2.737f);
+
+            CrushJoints::Master rampMaster;
+            rampMaster.prepareToPlay(sampleRate, 512, 2);
+            rampMaster.setVolume(0.0f);
+            rampMaster.setMix(1.0f);
+            rampMaster.setMasterOn(true);
+
+            juce::AudioBuffer<float> settle(2, 64);
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < 64; ++i)
+                    settle.setSample(ch, i, input);
+            rampMaster.processBlock(settle, nullptr);
+
+            rampMaster.setVolume(12.0f);
+
+            juce::AudioBuffer<float> volumeRamp(2, 512);
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < 512; ++i)
+                    volumeRamp.setSample(ch, i, input);
+            rampMaster.processBlock(volumeRamp, nullptr);
+
+            checkClose(volumeRamp.getSample(1, rampSamples / 2), volumeRamp.getSample(0, rampSamples / 2),
+                       1.0e-6f, "the volume ramp advances once per sample, not per channel");
+
+            const float expectedMid = std::pow(0.5f * (1.0f + knob12), 2.737f);
+            check(volumeRamp.getSample(0, 0) / input < 1.05f,
+                  "volume does not jump at the start of the ramp");
+            checkClose(volumeRamp.getSample(0, rampSamples / 2) / input, expectedMid, 0.02f,
+                       "volume ramps linearly in the knob value");
+            checkClose(volumeRamp.getSample(0, 511) / input, 3.98107f, 1.0e-3f,
+                       "volume reaches its target after 10 ms");
+
+            // Mix uses the same 10 ms linear ramp.
+            CrushJoints::Master mixMaster;
+            mixMaster.prepareToPlay(sampleRate, 512, 1);
+            mixMaster.setVolume(0.0f);
+            mixMaster.setMix(1.0f);
+            mixMaster.setMasterOn(true);
+
+            juce::AudioBuffer<float> wetSettle(1, 64);
+            juce::AudioBuffer<float> drySettle(1, 64);
+            wetSettle.clear();
+            drySettle.clear();
+            for (int i = 0; i < 64; ++i)
+                wetSettle.setSample(0, i, 1.0f);
+            mixMaster.processBlock(wetSettle, &drySettle);
+
+            mixMaster.setMix(0.0f);
+
+            juce::AudioBuffer<float> wetRamp(1, 512);
+            juce::AudioBuffer<float> dryRamp(1, 512);
+            wetRamp.clear();
+            dryRamp.clear();
+            for (int i = 0; i < 512; ++i)
+                wetRamp.setSample(0, i, 1.0f);
+            mixMaster.processBlock(wetRamp, &dryRamp);
+
+            check(wetRamp.getSample(0, 0) > 0.95f, "mix does not jump at the start of the ramp");
+            checkClose(wetRamp.getSample(0, rampSamples / 2), 0.5f, 0.02f,
+                       "mix ramps linearly");
+            checkClose(wetRamp.getSample(0, 511), 0.0f, 1.0e-4f,
+                       "mix reaches its target after 10 ms");
+        }
     }
 
     void testPresets()
