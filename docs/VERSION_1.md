@@ -176,7 +176,9 @@ remain.
 - [x] Run `pluginval` on the AU (strictness 5 and 10) and `auval`.
 - [ ] Test in at least Reaper (VST3) and Logic Pro (AU); add Ableton if available.
       Reaper is installed on the development machine; Logic Pro is not.
-- [ ] Extend the test harness (CPU benchmarks; offline render comparison exists).
+- [x] Extend the test harness: offline render comparison, fuzzing (through
+      pluginval strictness 10) and `tools/analysis/benchmark_cpu.py` (0.1 % of a
+      core at 44.1/48 kHz).
 - [ ] Consider CI (GitHub Actions) for macOS build + pluginval; consider Windows
       VST3 and Linux VST3/LV2 later.
 - Consider CI (GitHub Actions) for macOS build + pluginval; consider Windows VST3

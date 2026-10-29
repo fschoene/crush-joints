@@ -245,7 +245,13 @@ measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
 | A/B switching under automation | ⬜ not run in a host |
 | Stereo channel balance / bypass behaviour | ⬜ not run in a host |
 | Cross-platform build (Windows/Linux) | ⬜ not configured |
-| CPU/latency/buffer-size testing | ⬜ not run |
+| CPU/latency/buffer-size testing | ✅ passed 2026-10-29 | 0.1 % of one core, ≈1200× realtime at 44.1/48 kHz and ≈700× at 96 kHz (Apple M4, all modules on); reported latency 0 |
+
+CPU benchmark (`tools/analysis/benchmark_cpu.py`, macOS 26, Apple M4, 20 s
+stereo, all modules on, hot setting): 0.1 % of one core at 44.1 and 48 kHz for
+block sizes 64–1024 (about 1200× realtime), and 0.1 % at 96 kHz (about 700×).
+pluginval reports zero latency and zero tail. There is no oversampling, so the
+load does not scale with a quality factor.
 
 Validation was run on macOS 26 arm64 with `auval` (system) and pluginval
 1.0.4. pluginval's AU validation logs `Current program is -1` as a warning:
