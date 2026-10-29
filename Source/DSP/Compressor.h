@@ -27,7 +27,7 @@ namespace CrushJoints
         The original CrushJoints Phat design (low shelf plus a heavy parallel
         compressor, blended in with Amount) is kept as an optional "Boom" stage
         behind the compressor. It is not wired to a parameter or to the editor
-        yet (see docs/VERSION_2.md).
+        yet (see docs/ROADMAP.md, Version 2).
     */
     class Compressor
     {

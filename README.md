@@ -7,7 +7,7 @@ A JUCE-based clone of the classic CamelCrusher DSP plugin by Camel Audio.
 CrushJoints aims to be a faithful recreation of the CamelCrusher multi-effect
 plugin, featuring:
 - Tube and Mech distortion with the original polynomial coefficient tables
-- 24dB/octave low-pass filter with resonance
+- 12 dB/octave low-pass filter with resonance (Q 1–7)
 - One-knob compressor with Phat mode (a measured model of the original)
 - Master volume and mix controls
 - Default preset at the top, plus 20 original and 11 CrushClone presets grouped into Legacy/Original, CrushClone and User categories
@@ -17,13 +17,11 @@ plugin, featuring:
 - Native mono/stereo bus support for mono tracks
 - Resizable dark blue/yellow interface with labelled controls
 
-> **Current status:** Version 1 core is feature-complete: full signal chain,
-> A/B comparison, original and CrushClone presets, user presets and the modern
-> editor are implemented and covered by offline tests. The plugin builds as
-> VST3/AU/Standalone. Host validation (`pluginval`/`auval`/DAW testing) remains
-> as release work; further GUI/workflow items are planned for Version 2. See
-> [docs/STATUS.md](docs/STATUS.md), [docs/VERSION_1.md](docs/VERSION_1.md) and
-> [docs/VERSION_2.md](docs/VERSION_2.md).
+> **Current status:** Version 1 is feature-complete and validated with
+> `pluginval`, `auval` and a manual Reaper pass (automation, presets, project
+> reload, A/B, bypass). The remaining release work is a second DAW (Logic is not
+> installed here) and optional CI. Version 2 covers GUI and workflow upgrades.
+> See [docs/STATUS.md](docs/STATUS.md) and [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Building
 
@@ -67,12 +65,11 @@ User presets are saved to
 
 Project documentation lives in [docs/](docs/):
 
-- [Research](docs/RESEARCH.md) — CamelCrusher background, DSP and presets
-- [Architecture](docs/ARCHITECTURE.md) — build system, signal chain, GUI and parameters
-- [Status](docs/STATUS.md) — what works today and known gaps
-- [Roadmap](docs/ROADMAP.md) — version navigation and idea backlog
-- [Version 1](docs/VERSION_1.md) — finished clone scope and release work
-- [Version 2](docs/VERSION_2.md) — planned GUI and workflow upgrades
+- [Background](docs/RESEARCH.md) — CamelCrusher history, manual, original UI and sources
+- [Measurements](docs/MEASUREMENTS.md) — measured behaviour of the original (ground truth)
+- [Architecture](docs/ARCHITECTURE.md) — build, signal chain, parameters, presets, state and editor
+- [Status](docs/STATUS.md) — tests, validation results, known gaps and deviations
+- [Roadmap](docs/ROADMAP.md) — version scope, milestones and idea backlog
 
 This project follows a phased development approach described in the roadmap.
 

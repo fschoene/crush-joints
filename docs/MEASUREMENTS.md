@@ -1,9 +1,8 @@
 # Measurements of the original CamelCrusher
 
 Ground truth from black-box measurements of the original plugin. Where this
-document disagrees with [RESEARCH.md](RESEARCH.md), CAMELCRUSHER_REBUILT.md or
-the code, **this document wins** (RESEARCH.md has been corrected accordingly;
-the code deviations are tracked in [STATUS.md](STATUS.md)).
+document disagrees with [RESEARCH.md](RESEARCH.md) or the code, **this document
+wins**. Code deviations are tracked in [STATUS.md](STATUS.md).
 
 Started 2026-10-28. Everything here is reproducible with the scripts in
 [`tools/analysis/`](../tools/analysis/README.md).
@@ -76,8 +75,7 @@ steepens sharply; the last step is a jump from 12 020 Hz at 0.999 to 16 000 Hz a
 
 Further points: 0.97 → 6141 Hz, 0.98 → 6841, 0.99 → 8040, 0.995 → 9238,
 0.999 → 12 020. The display is an integer-rounded readout of the internal
-frequency, not necessarily the exact filter cutoff; this needs to be confirmed
-by measuring the filter response (see section 5).
+frequency; section 5 confirms that it equals the real cutoff.
 
 ### Volume (index 11)
 
@@ -132,7 +130,6 @@ Dense (1001-point) versions of these three tables are produced by
   ±0.9999 (no knee, no soft limiting) regardless of module settings, Mix or
   Volume. This was verified for modules off with a ±4 input, for Mix 0 % and 50 %,
   and for Volume 0.5 with a ±8 input. Clipping sits after volume and mix.
-  (CrushJoints limited at ±2.0 until 2026-10-28.)
 - **Volume of 1.0 means 0 dB, with no headroom boost**, so a hot signal can only
   be turned down, never up.
 
@@ -145,10 +142,8 @@ Dense (1001-point) versions of these three tables are produced by
 - **The stage order is Mech first, then Tube.** With both knobs engaged, the
   chain `tube(mech(x))` matches the plugin to RMS error 0.0001–0.0008 in five
   tested combinations; `mech(tube(x))` is off by 0.037–0.070, and summing or
-  averaging the stages is far worse. CrushJoints applied Tube then
-  Mech until 2026-10-28, which audibly changed the character at any setting where
-  both are above 0. `Tests/DSPTests.cpp` now holds recorded original outputs for
-  three Tube/Mech combinations.
+  averaging the stages is far worse. `Tests/DSPTests.cpp` holds recorded
+  original outputs for three Tube/Mech combinations.
 - The stages are memoryless (the same input value produces the same output on the
   rising and falling edge of a slow triangle).
 - `DistOn = 0` switches both stages off; the Filter and Compressor are separate
@@ -172,8 +167,8 @@ TPT-SVF; the two have the same magnitude response).
   5.5 at 75 %, 7.0 at 100 %). Fitted Q is within 0.002 of this at every tested
   setting. There is **no passband loss** at high resonance (DC gain 0.00 dB), so
   the peak is +16.9 dB at Res = 100 %.
-- **Cutoff changes** are smoothed: after a step the response has settled in
-  about 10–20 ms. The exact smoothing law is not yet measured.
+- **Cutoff changes** are smoothed linearly in the knob value over about 10 ms,
+  with coefficients recomputed every sample (section 7).
 - Below the output limiter described next, the Filter does not clip or colour
   the signal.
 
@@ -304,23 +299,5 @@ affect their own stage, so every combination of the three switches was verified.
 2. **Cutoff/Resonance smoothing** and the Filter's behaviour when it is switched
    on (state reset) in more detail.
 3. **Aliasing / oversampling** of the distortion stages.
-4. **Factory programs:** load `CamelCrusherPresetsA.fxb` into the plugin through
-   `effSetChunk` to confirm that the parsed values reproduce the expected audio
-   end to end.
-5. **Resonance/Q ranges at the extremes** (cutoff near 16 kHz at high sample
+4. **Resonance/Q ranges at the extremes** (cutoff near 16 kHz at high sample
    rates) and the exact behaviour of denormals/silence in the compressor.
-
-## 9. Effect on CrushJoints
-
-| Finding | Behaviour in CrushJoints before this work | Status |
-|---------|-------------------------------------------|--------|
-| Chain is Mech → Filter → Tube → Compressor → Master | Tube → Mech, then Filter, then Compressor | fixed (see STATUS.md) |
-| Output hard clip at ±0.9999 | limiter at ±2.0 | fixed 2026-10-28 |
-| Cutoff is 80 Hz – 16 kHz with a custom curve | 20 Hz – 20 kHz exponential-skew knob | fixed |
-| Volume is −∞ … 0 dB, gain = value^2.737 | −24 … +12 dB range; stepped legacy table | range kept deliberately; legacy conversion uses the measured law |
-| Filter is a linear 2-pole biquad, Q = 1 + 6·Res | TPT SVF, Q 0.7071 … 4.2071 | fixed |
-| Compressor: measured model above | CrushClone-derived design | replaced |
-| Filter output limiter | not present | open (section 5) |
-| Phat: instant detector, no shelf | 120 Hz shelf into a parallel compressor | replaced; the old design is kept as the hidden "Boom" mode |
-| Master is clip(vol · (mix·wet + (1−mix)·dry)) | same | confirmed |
-| Volume/Mix ramp 10 ms in the knob value | unsmoothed, stepped per block | fixed 2026-10-29 |
