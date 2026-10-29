@@ -166,21 +166,25 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
 - [x] Regression tests that compare against recorded measurements (distortion,
       filter, compressor, master).
 
-## Milestone 4 — Validation and release (pending)
+## Milestone 4 — Validation and release (in progress)
 
-**Status:** not started.
+**Status:** started 2026-10-29. Validators pass; DAW checks and release housekeeping
+remain.
 
-- Extend the test harness (offline render comparison, fuzzing, CPU benchmarks).
-- Run `pluginval` at strictness 5+ on the VST3.
-- Run `auval` on the AU component.
-- Test in at least Reaper (VST3) and Logic Pro (AU); add Ableton if available.
+- [x] Run `pluginval` on the VST3 (strictness 5 in-process and out-of-process,
+      strictness 10 in-process; pluginval 1.0.4).
+- [x] Run `pluginval` on the AU (strictness 5 and 10) and `auval`.
+- [ ] Test in at least Reaper (VST3) and Logic Pro (AU); add Ableton if available.
+      Reaper is installed on the development machine; Logic Pro is not.
+- [ ] Extend the test harness (CPU benchmarks; offline render comparison exists).
+- [ ] Consider CI (GitHub Actions) for macOS build + pluginval; consider Windows
+      VST3 and Linux VST3/LV2 later.
 - Consider CI (GitHub Actions) for macOS build + pluginval; consider Windows VST3
   and Linux VST3/LV2 later.
 - Verify state round-trip, automation, original/CrushClone/User preset recall,
   category behaviour and mono/stereo bus negotiation in each host.
 - Keep the clean build warning-free as new code lands.
-- Add a LICENSE file: the README claims GPLv3 but the repository currently has
-  no `LICENSE` file.
+- [x] Add the GPLv3 `LICENSE` file (README already claimed GPLv3).
 
 ## Definition of done for v1.0
 
@@ -194,7 +198,8 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
 - [x] Mono/mono, stereo/stereo and mono/stereo bus layouts supported, covered
       by offline tests and verified in Reaper for VST3 and AU.
 - [ ] Presets, state and host automation verified in at least two DAWs.
-- [ ] `pluginval` strictness 5+ and `auval` pass.
+- [x] `pluginval` strictness 5+ (VST3 and AU) and `auval` pass.
 - [x] VST3, AU and Standalone artefacts built from a clean checkout.
-- [ ] README, docs and LICENSE consistent with the implementation.
+- [ ] README, docs and LICENSE consistent with the implementation (LICENSE
+      added; final documentation pass still open).
 

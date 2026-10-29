@@ -50,7 +50,7 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 | Program API | ✅ working | real current program, host program names and renames |
 | A/B comparison | ✅ working | processor-level snapshots; A/B and copy in the editor |
 | GUI shell | ⚠️ partial | labels, dark blue/yellow theme, value readout, double-click reset, locks, resizing and bypass dimming are in; meter, MIDI Learn, right-click modes and accessibility are missing |
-| Host validation | ❌ not started | no pluginval/auval/DAW runs |
+| Host validation | 🟡 validators pass | `auval` and `pluginval` (VST3 + AU, strictness 5 and 10) pass; DAW automation/state checks pending |
 
 ## 3. What works end to end
 
@@ -179,8 +179,10 @@ measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
    −45 dB. See [MEASUREMENTS.md](MEASUREMENTS.md) §5 and
    `tools/analysis/compare_clone.py`.
 
-1. **No host validation yet.** `pluginval`, `auval` and DAW testing have not
-   been run. Offline tests and a Standalone launch are the only verification.
+1. **Host validation is partly done.** `auval` passes and `pluginval` passes
+   on the VST3 and AU at strictness 5 and 10. DAW-level checks (automation,
+   preset recall, A/B switching, state round-trip in a real project) are still
+   manual; Reaper is installed on the development machine, Logic Pro is not.
 2. **No oversampling.** This matches reverse-camel and keeps the dry/wet path
    latency-free, but high Mech settings can alias like the original. The
    `Oversampler` wrapper exists for a future optional quality mode.
@@ -203,8 +205,8 @@ measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
    invention and has no counterpart in the original.
 7. **Format coverage is narrower than old docs claimed.** Only VST3, AU and
    Standalone are built; there is no CLAP, LV2 or AAX target.
-8. **No CI and no LICENSE file.** The README claims GPLv3, but the repository
-   does not yet contain a `LICENSE` file.
+8. **No CI.** The build and validators are run manually; there is no GitHub
+   Actions workflow. The GPLv3 `LICENSE` file is now present.
 9. **User presets are a single XML bank.** There is no import/export, search,
    filter or sorting UI. Corrupt or unreadable files are ignored gracefully,
    leaving the factory bank available.
@@ -233,8 +235,10 @@ measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
 | Offline DSP/reference tests | ✅ passed |
 | Processor A/B/program/state tests | ✅ passed |
 | Standalone launch smoke test | ✅ passed (6 s, no crash) |
-| `pluginval --strictness-level 5` on VST3 | ⬜ not run |
-| `auval` on the AU component | ⬜ not run |
+| `pluginval` on VST3, strictness 5 | ✅ passed 2026-10-29 (in-process and out-of-process) |
+| `pluginval` on VST3, strictness 10 | ✅ passed 2026-10-29 (in-process) |
+| `pluginval` on AU, strictness 5 and 10 | ✅ passed 2026-10-29 (in-process; see note) |
+| `auval` on the AU component | ✅ passed 2026-10-29 |
 | State save/load round-trip in a host | ✅ offline, ⬜ not in a host |
 | Automation of all 12 parameters | ⬜ not run |
 | Preset switching in a host (factory + user) | ⬜ not run |
@@ -243,7 +247,14 @@ measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
 | Cross-platform build (Windows/Linux) | ⬜ not configured |
 | CPU/latency/buffer-size testing | ⬜ not run |
 
-Suggested commands once validation starts (macOS):
+Validation was run on macOS 26 arm64 with `auval` (system) and pluginval
+1.0.4. pluginval's AU validation logs `Current program is -1` as a warning:
+that value comes from the *host-side* AU wrapper, which reads
+`kAudioUnitProperty_PresentPreset`; JUCE's AU client only sets that property
+after a program change, so the warning appears for JUCE AUs in general and is
+not a plugin defect. The test itself passes.
+
+Suggested commands (macOS):
 
 ```sh
 # Install the AU and VST3 for host/validator visibility
@@ -257,7 +268,11 @@ auval -v aufx CJTS Crsh
 
 # Steinberg/JUCE plugin validation (if pluginval is installed)
 pluginval --strictness-level 5 --validate-in-process \
-          ~/Library/Audio/Plug-Ins/VST3/CrushJoints.vst3
+          build/CrushJoints_artefacts/Release/VST3/CrushJoints.vst3
+pluginval --strictness-level 10 --validate-in-process \
+          build/CrushJoints_artefacts/Release/VST3/CrushJoints.vst3
+pluginval --strictness-level 10 --validate-in-process \
+          build/CrushJoints_artefacts/Release/AU/CrushJoints.component
 ```
 
 ## 7. Reproducing the build and tests
