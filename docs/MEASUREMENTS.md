@@ -323,3 +323,4 @@ affect their own stage, so every combination of the three switches was verified.
 | Filter output limiter | not present | open (section 5) |
 | Phat: instant detector, no shelf | 120 Hz shelf into a parallel compressor | replaced; the old design is kept as the hidden "Boom" mode |
 | Master is clip(vol · (mix·wet + (1−mix)·dry)) | same | confirmed |
+| Volume/Mix ramp 10 ms in the knob value | unsmoothed, stepped per block | fixed 2026-10-29 |

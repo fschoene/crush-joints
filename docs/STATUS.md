@@ -105,7 +105,9 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
     stage (DSP-level switch, no parameter, no UI).
   - **Master:** optional dry/wet blend against a pre-effects copy, output
     volume, full bypass when `master_on` is false, hard clipping at ±0.9999 (as
-    measured on the original) and NaN/Inf sanitation.
+    measured on the original) and NaN/Inf sanitation. Mix and Volume ramp
+    linearly over 10 ms in the knob value, with the volume gain law evaluated on
+    the ramping value, as measured on the original.
 
 ## 4. Test results
 
@@ -126,7 +128,8 @@ build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 6. Compressor against values recorded from the original: static curves for four
    Amounts (Phat off and on), Phat release ramp, slow attack/release samples,
    stereo link, bypass and switch-on fade, plus the hidden Boom stage.
-7. Master volume boost, ±0.9999 clipping, full bypass and dry/wet mix.
+7. Master volume boost, ±0.9999 clipping, full bypass and dry/wet mix, plus
+   the measured 10 ms linear ramps of Volume (in the knob domain) and Mix.
 8. The 32-preset factory bank (Default + 20 legacy + 11 grouped CrushClone),
    including the corrected Telephone flags, category assignment, legacy value
    conversion; values re-verified against the original factory `.fxb`
@@ -191,8 +194,7 @@ measurements of the original ([MEASUREMENTS.md](MEASUREMENTS.md)).
    keeps -24..+12 dB (the original is −∞..0 dB with gain `knob^2.737`; the 20
    factory presets are converted with that law and stay inside our range).
    Like the A/B comparison and the randomize locks, the positive range is an
-   intended deviation. Master Mix and Volume are not smoothed here; the
-   original ramps them over 10 ms.
+   intended deviation. Mix and Volume use the original's 10 ms linear ramps.
 6. **Compressor and filter are measured models.** They match the original to
    better than −65 dB on test signals; the differences are the missing filter
    limiter (item 0), the exact behaviour of the filter when it is switched on,

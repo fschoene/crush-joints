@@ -149,7 +149,11 @@ The `tube_on` switch bypasses both distortion stages; the filter and the
 compressor have their own switches. The compressor is a bit-transparent unity
 gain below full scale at Amount 0 (it still clamps at ±3.3 and folds back overs).
 Master applies the mix, volume, a hard clip at ±0.9999 (measured on the original)
-and NaN/Inf sanitation.
+and NaN/Inf sanitation. Mix and Volume ramp linearly over 10 ms in the knob
+value (measured), and the volume gain law is evaluated on the ramping value.
+The smoothers snap to their targets on the first block after prepare/reset and
+whenever the Master is switched back on, so bypass and preset loading do not
+fade in.
 
 There is currently **no oversampling** in the signal path, matching the
 reverse-camel reference and keeping the dry/wet path free of latency. The
@@ -180,7 +184,8 @@ Notes:
 - The original Master volume is −∞…0 dB
   ([MEASUREMENTS.md](MEASUREMENTS.md)); the implementation uses -24–+12 dB to match CrushClone's preset bank (some
   presets use positive gain). This is an intentional deviation, documented in
-  [STATUS.md](STATUS.md).
+  [STATUS.md](STATUS.md). The gain law and its 10 ms knob-domain ramp are the
+  measured ones.
 - The cutoff parameter keeps its value in Hz, but its `NormalisableRange` uses
   the original's measured knob curve (`CutoffCurve`), so the knob, host
   automation and the preset conversion all follow the same law.

@@ -217,6 +217,9 @@ Notes:
 - The original **hard-clips the output at ±0.9999** when Master is on (no knee,
   after volume and mix; measured). With Master off the signal is passed through
   unclipped.
+- Volume and Mix ramp linearly over about **10 ms in the knob value** (measured);
+  the volume gain law `knob^2.737` is applied to the ramping value, not to a
+  ramping dB value.
 - The original applies hard output limiting, which can distort hot signals
   (manual FAQ). Turning down Volume or disabling Phat resolves it. The manual
   also mentions an **Output Level meter** in the main display that shows

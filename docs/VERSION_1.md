@@ -162,8 +162,9 @@ The remaining GUI work was moved to [Version 2](VERSION_2.md).
 - [x] Signal chain order Mech → Filter → Tube → Compressor → Master (test in
       `ProcessorTests.cpp`).
 - [ ] Filter output limiter of the original (measured, partly identified).
-- [ ] Mix/Volume 10 ms smoothing.
-- [ ] Add regression tests that compare against recorded measurements.
+- [x] Mix/Volume 10 ms smoothing (linear in the knob value, measured).
+- [x] Regression tests that compare against recorded measurements (distortion,
+      filter, compressor, master).
 
 ## Milestone 4 — Validation and release (pending)
 
