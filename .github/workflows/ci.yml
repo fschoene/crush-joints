@@ -1,0 +1,249 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, research]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JUCE_VERSION: "9.0.4"
+  PLUGINVAL_VERSION: "1.0.4"
+
+jobs:
+  macos:
+    name: macOS (arm64)
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache JUCE
+        id: juce
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/JUCE
+          key: juce-${{ runner.os }}-${{ env.JUCE_VERSION }}
+
+      - name: Fetch JUCE
+        if: steps.juce.outputs.cache-hit != 'true'
+        run: >
+          git clone --depth 1 --branch "$JUCE_VERSION"
+          https://github.com/juce-framework/JUCE.git "$RUNNER_TEMP/JUCE"
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DJUCE_ROOT="$RUNNER_TEMP/JUCE"
+
+      - name: Build
+        run: |
+          set -o pipefail
+          cmake --build build --config Release -j"$(sysctl -n hw.ncpu)" 2>&1 | tee build.log
+
+      - name: Check for warnings in project sources
+        run: |
+          if grep -E "warning:" build.log | grep -E "Source/|Tests/|tools/analysis/"; then
+            echo "Warnings in project sources" >&2
+            exit 1
+          fi
+
+      - name: Run offline tests
+        run: |
+          ./build/CrushJointsTests_artefacts/Release/CrushJointsTests
+          ./build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
+
+      - name: Install AU
+        run: |
+          mkdir -p "$HOME/Library/Audio/Plug-Ins/Components"
+          cp -R build/CrushJoints_artefacts/Release/AU/CrushJoints.component \
+                "$HOME/Library/Audio/Plug-Ins/Components/"
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          sleep 1
+
+      - name: auval
+        run: auval -v aufx CJTS Rflo
+
+      - name: pluginval
+        run: |
+          set -euo pipefail
+          curl -sL -o "$RUNNER_TEMP/pluginval.zip" \
+            "https://github.com/Tracktion/pluginval/releases/download/v${PLUGINVAL_VERSION}/pluginval_macOS.zip"
+          echo "3c4c533bda0c5059eea3ddaea752d757ee2025041f0f47e6bcb0e87f6082b29f  $RUNNER_TEMP/pluginval.zip" \
+            | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/pluginval.zip" -d "$RUNNER_TEMP"
+          xattr -dr com.apple.quarantine "$RUNNER_TEMP/pluginval.app"
+
+          "$RUNNER_TEMP/pluginval.app/Contents/MacOS/pluginval" \
+            --strictness-level 5 --validate-in-process --timeout-ms 60000 \
+            build/CrushJoints_artefacts/Release/VST3/CrushJoints.vst3
+          "$RUNNER_TEMP/pluginval.app/Contents/MacOS/pluginval" \
+            --strictness-level 5 --validate-in-process --timeout-ms 60000 \
+            build/CrushJoints_artefacts/Release/AU/CrushJoints.component
+
+      - name: Upload failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build-log
+          path: build.log
+          if-no-files-found: ignore
+
+  windows:
+    name: Windows (x64)
+    # Scope the second platform to main pushes and manual runs, not every PR.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache JUCE
+        id: juce
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/JUCE
+          key: juce-${{ runner.os }}-${{ env.JUCE_VERSION }}
+
+      - name: Fetch JUCE
+        if: steps.juce.outputs.cache-hit != 'true'
+        run: >
+          git clone --depth 1 --branch "$env:JUCE_VERSION"
+          https://github.com/juce-framework/JUCE.git "$env:RUNNER_TEMP/JUCE"
+
+      - name: Configure
+        run: >
+          cmake -B build -G "Visual Studio 17 2022" -A x64
+          -DJUCE_ROOT="$env:RUNNER_TEMP/JUCE"
+
+      - name: Build
+        run: |
+          cmake --build build --config Release --parallel 2>&1 | Tee-Object -FilePath build.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run offline tests
+        run: |
+          .\build\CrushJointsTests_artefacts\Release\CrushJointsTests.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .\build\CrushJointsProcessorTests_artefacts\Release\CrushJointsProcessorTests.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: pluginval
+        run: |
+          $url = "https://github.com/Tracktion/pluginval/releases/download/v$env:PLUGINVAL_VERSION/pluginval_Windows.zip"
+          $zip = "$env:RUNNER_TEMP\pluginval.zip"
+          curl.exe -sL -o $zip $url
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne "c08e61ce3b96db41636f8ec7e76f4c7e2c13ebdac7fa1b5a1f52b4f32ec715ab") {
+            throw "pluginval checksum mismatch: $hash"
+          }
+          Expand-Archive -Path $zip -DestinationPath $env:RUNNER_TEMP -Force
+
+          & "$env:RUNNER_TEMP\pluginval.exe" --strictness-level 5 --validate-in-process `
+            --timeout-ms 60000 "build\CrushJoints_artefacts\Release\VST3\CrushJoints.vst3"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build-log
+          path: build.log
+          if-no-files-found: ignore
+
+  linux:
+    name: Linux (x64)
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build zip xvfb \
+            libasound2-dev libjack-jackd2-dev ladspa-sdk \
+            libfreetype-dev libfontconfig1-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+            libxinerama-dev libxrandr-dev libxrender-dev libxi-dev \
+            libegl-dev libglu1-mesa-dev mesa-common-dev
+
+      - name: Cache JUCE
+        id: juce
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/JUCE
+          key: juce-${{ runner.os }}-${{ env.JUCE_VERSION }}
+
+      - name: Fetch JUCE
+        if: steps.juce.outputs.cache-hit != 'true'
+        run: >
+          git clone --depth 1 --branch "$JUCE_VERSION"
+          https://github.com/juce-framework/JUCE.git "$RUNNER_TEMP/JUCE"
+
+      - name: Configure
+        run: >
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          -DJUCE_ROOT="$RUNNER_TEMP/JUCE"
+
+      - name: Build
+        run: |
+          set -o pipefail
+          cmake --build build --parallel "$(nproc)" 2>&1 | tee build.log
+
+      - name: Check for warnings in project sources
+        run: |
+          if grep -E "warning:" build.log | grep -E "Source/|Tests/|tools/analysis/"; then
+            echo "Warnings in project sources" >&2
+            exit 1
+          fi
+
+      - name: Run offline tests
+        run: |
+          ./build/CrushJointsTests_artefacts/Release/CrushJointsTests
+          ./build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
+
+      - name: pluginval
+        run: |
+          set -euo pipefail
+          curl -sL -o "$RUNNER_TEMP/pluginval.zip" \
+            "https://github.com/Tracktion/pluginval/releases/download/v${PLUGINVAL_VERSION}/pluginval_Linux.zip"
+          echo "c01c49d8063965c4c2dea8324468336768f5c9139e0b1caebde14c2400b55352  $RUNNER_TEMP/pluginval.zip" \
+            | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/pluginval.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/pluginval"
+
+          xvfb-run -a "$RUNNER_TEMP/pluginval" \
+            --strictness-level 5 --validate-in-process --timeout-ms 60000 \
+            build/CrushJoints_artefacts/Release/VST3/CrushJoints.vst3
+
+      - name: Upload failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build-log
+          path: build.log
+          if-no-files-found: ignore
+
+  docs:
+    name: Documentation links
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check relative links
+        run: python3 tools/ci/check_docs.py

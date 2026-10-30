@@ -85,7 +85,8 @@ randomize locks and the signal-chain order.
 | Reaper manual pass | ✅ automation, factory/user presets, project reload, A/B slots, master bypass |
 | Logic Pro, AU | ⬜ not installed on the development machine |
 | CPU / latency / buffer sizes | ✅ see below |
-| Cross-platform build | ⬜ not configured |
+| Cross-platform build | 🟡 Windows/Linux CI jobs added | built and pluginval-tested on CI, not tested on real hardware |
+| CI workflows | 🟡 added | `.github/workflows/`; first GitHub run pending |
 
 CPU benchmark (`tools/analysis/benchmark_cpu.py`, Apple M4, 20 s stereo, all
 modules on, hot setting): 0.1 % of one core at 44.1 and 48 kHz for block sizes

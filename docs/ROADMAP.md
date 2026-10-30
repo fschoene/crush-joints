@@ -135,8 +135,10 @@ Source of truth: [MEASUREMENTS.md](MEASUREMENTS.md), produced with
       project reload, A/B slots and master bypass all work.
 - [ ] Logic Pro (AU); not installed on the development machine.
 - [ ] Verify presets, state and automation in a second DAW.
-- [ ] Consider CI (GitHub Actions) for macOS build + pluginval; Windows/Linux
-      later.
+- [x] Add GitHub Actions CI: macOS on every PR/push (build, tests, `auval`,
+      pluginval 5); Windows and Linux VST3 builds on `main` pushes and manual
+      runs; release workflow for tags (macOS universal VST3+AU, Windows/Linux
+      VST3, pluginval 5/10, packaged downloads).
 - [x] Add the GPLv3 `LICENSE`.
 - [x] Keep the build warning-free.
 

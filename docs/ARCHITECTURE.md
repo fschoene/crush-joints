@@ -95,6 +95,24 @@ renderer used by `tools/analysis/compare_clone.py` and
 `tools/analysis/benchmark_cpu.py` is built only with
 `-DCRUSHJOINTS_BUILD_TOOLS=ON`.
 
+### Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request and push to `main` or
+`research`. The macOS arm64 job builds Release, runs both test suites, `auval`
+and pluginval strictness 5. Windows x64 and Linux x64 build the VST3, run both
+test suites and pluginval; those jobs run on pushes to `main` and manual
+dispatches rather than every PR, so a second platform cannot block unrelated
+work. A docs job checks relative Markdown links with `tools/ci/check_docs.py`.
+
+`.github/workflows/release.yml` runs on `v*` tags and manual dispatches. It
+checks the tag against the CMake version, builds macOS universal (arm64 +
+x86_64), Windows x64 and Linux x64, runs tests and pluginval (strictness 5 and
+10), and attaches the packages to the GitHub release. The macOS package contains
+the VST3 and AU; the Windows and Linux packages contain the VST3 and are marked
+as built/pluginval-tested but not tested on real hardware or in a DAW.
+
+CI fetches JUCE at a pinned tag. The Standalone is built but not packaged.
+
 ## 4. Signal chain
 
 Supported main bus layouts:
