@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(CrushJoints VERSION 1.0.0 LANGUAGES C CXX)
+project(CrushJoints VERSION 0.9.0 LANGUAGES C CXX)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -20,7 +20,7 @@ add_subdirectory("${JUCE_ROOT}" JUCE-Build)
 
 # Create the plugin
 juce_add_plugin(CrushJoints
-    COMPANY_NAME "CrushJoints"
+    COMPANY_NAME "rurouni flojo"
     PLUGIN_NAME "CrushJoints"
     PLUGIN_CODE "CJTS"
     PLUGIN_MANUFACTURER_CODE "Crsh"

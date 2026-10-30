@@ -138,11 +138,11 @@ namespace CrushJoints
         // Safety limiter and sanitation
         for (int ch = 0; ch < numChannels; ++ch)
         {
-            float* data = buffer.getWritePointer(ch);
+            float* channelData = buffer.getWritePointer(ch);
 
             for (int i = 0; i < numSamples; ++i)
             {
-                float sample = data[i];
+                float sample = channelData[i];
 
                 if (sample > kLimiterCeiling)
                     sample = kLimiterCeiling;
@@ -152,7 +152,7 @@ namespace CrushJoints
                 if (! std::isfinite(sample))
                     sample = 0.0f;
 
-                data[i] = sample;
+                channelData[i] = sample;
             }
         }
     }

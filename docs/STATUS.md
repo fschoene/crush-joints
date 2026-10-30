@@ -15,8 +15,9 @@ deliberate deviations. How the code is organised is in
 | OS | macOS 26 (arm64) |
 | Compiler | AppleClang 21.0.0 |
 | CMake | 4.4.4 |
-| JUCE | 9.0.4, |
+| JUCE | 9.0.4, local checkout at `/Volumes/WDB/user/flo/JUCE` |
 | Build type | Release |
+| Plugin version | 0.9.0 (the v1.0 checklist is not complete yet) |
 
 A clean build succeeds with no warnings from project sources and produces:
 

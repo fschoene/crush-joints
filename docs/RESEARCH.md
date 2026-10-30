@@ -39,8 +39,9 @@ slice. The 2011 installer places the VST at
 (manual, `CamelCrusherPresetsA.fxb`, skins) under
 `/Library/Application Support/Camel Audio/CamelCrusherData/`.
 
-CrushJoints uses its own identity (`CrushJoints`, code `CJTS`, manufacturer
-`Crsh`) and 12 public parameters. Reopening old sessions by identity is a
+CrushJoints uses its own identity (`CrushJoints`, plug-in code `CJTS`,
+manufacturer name `rurouni flojo`, 4-character manufacturer code `Crsh`) and 12
+public parameters. Reopening old sessions by identity is a
 separate compatibility project, listed in the [roadmap backlog](ROADMAP.md).
 
 ## 3. Signal chain

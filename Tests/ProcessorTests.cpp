@@ -117,17 +117,25 @@ namespace
         if (std::getenv("CRUSHJOINTS_RENDER_UI") == nullptr)
             return;
 
-        auto renderState = [](const juce::String& tag, bool masterOff)
+        auto renderState = [](const juce::String& tag, bool masterOff, int program = -1,
+                              bool lockParameters = true, float scale = 1.0f)
         {
             CrushJointsAudioProcessor processor;
-            processor.setParameterLocked(CrushJointsAudioProcessor::lockableTube, true);
-            processor.setParameterLocked(CrushJointsAudioProcessor::lockableRes, true);
+
+            if (lockParameters)
+            {
+                processor.setParameterLocked(CrushJointsAudioProcessor::lockableTube, true);
+                processor.setParameterLocked(CrushJointsAudioProcessor::lockableRes, true);
+            }
 
             if (masterOff)
             {
                 auto* masterOn = processor.getAPVTS().getParameter("master_on");
                 masterOn->setValueNotifyingHost(0.0f);
             }
+
+            if (program >= 0)
+                processor.setCurrentProgram(program);
 
             std::unique_ptr<juce::AudioProcessorEditor> editor(processor.createEditor());
 
@@ -142,7 +150,7 @@ namespace
             {
                 editor->setSize(size.first, size.second);
 
-                const auto image = editor->createComponentSnapshot(editor->getLocalBounds());
+                const auto image = editor->createComponentSnapshot(editor->getLocalBounds(), true, scale);
                 const juce::File file("/tmp/crush-editor-" + tag + "-"
                                       + juce::String(size.first) + "x"
                                       + juce::String(size.second) + ".png");
@@ -160,6 +168,10 @@ namespace
 
         renderState("default", false);
         renderState("master-off", true);
+
+        // Whole-UI snapshot for the README, with a factory preset and at 2x.
+        renderState("preset", false, 13, false);
+        renderState("readme", false, 13, false, 2.0f);
     }
 
     juce::AudioBuffer<float> renderProcessor(CrushJointsAudioProcessor& processor,

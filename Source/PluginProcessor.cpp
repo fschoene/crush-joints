@@ -23,7 +23,19 @@ CrushJointsAudioProcessor::CrushJointsAudioProcessor(juce::File userPresetFile)
                         CrushJoints::CutoffCurve::kMinHz, CrushJoints::CutoffCurve::kMaxHz,
                         [](float, float, float proportion) { return CrushJoints::CutoffCurve::toHz(proportion); },
                         [](float, float, float hz) { return CrushJoints::CutoffCurve::toNormalised(hz); }),
-                    CrushJoints::CutoffCurve::kMaxHz),
+                    CrushJoints::CutoffCurve::kMaxHz,
+                    juce::AudioParameterFloatAttributes()
+                        .withStringFromValueFunction([](float hz, int)
+                        {
+                            return hz >= 1000.0f ? juce::String(hz / 1000.0f, 1) + " kHz"
+                                                 : juce::String(juce::roundToInt(hz)) + " Hz";
+                        })
+                        .withValueFromStringFunction([](const juce::String& text)
+                        {
+                            const auto lower = text.trim().toLowerCase();
+                            const auto number = lower.getFloatValue();
+                            return lower.contains("k") ? number * 1000.0f : number;
+                        })),
                 std::make_unique<juce::AudioParameterFloat>("res", "Resonance", 0.0f, 1.0f, 0.0f),
                 std::make_unique<juce::AudioParameterBool>("lpf_on", "Filter On", false),
                 

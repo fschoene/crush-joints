@@ -12,6 +12,8 @@ This project is heavily influenced/inspired by other peoples projects, specifica
 
 ## Overview
 
+![CrushJoints editor](docs/images/editor.png)
+
 CrushJoints fundamental aim is to be a faithful recreation of the CamelCrusher effect chain. In this regard it is featuring:
 - Tube and Mech distortion dials
 - 12 dB/octave low-pass filter with resonance (Q 1–7)

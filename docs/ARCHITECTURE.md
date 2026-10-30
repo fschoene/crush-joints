@@ -65,8 +65,10 @@ plugin is not in the repository.
   (tested with JUCE 9.0.4).
 - `juce_add_plugin(CrushJoints …)` produces **VST3**, **AU** and **Standalone**
   on macOS. There is no CLAP, LV2 or AAX target.
-- Plugin metadata: code `CJTS`, manufacturer `Crsh`, VST3 category `Fx` /
-  subcategory `Filter`.
+- Plugin metadata: plug-in code `CJTS`, manufacturer name `rurouni flojo`,
+  4-character manufacturer code `Crsh`, VST3 category `Fx` / subcategory
+  `Filter`. The project version is `0.9.0` while the v1.0 checklist is
+  incomplete.
 - Compile definitions: `JUCE_WEB_BROWSER=0`, `JUCE_USE_CURL=0`,
   `JUCE_STRICT_MODE=1`, `JUCE_VST3_CAN_REPLACE_VST2=0`.
 - Recommended JUCE config, LTO and warning flags are enabled.
@@ -272,7 +274,8 @@ locks and the signal-chain order.
 ```
 
 `CRUSHJOINTS_RENDER_UI=1` renders 80 %, 100 % and 150 % editor snapshots to
-`/tmp/crush-editor-*.png`. Detailed results and known gaps are in
+`/tmp/crush-editor-*.png`, including a 2× whole-UI snapshot used for
+`docs/images/editor.png`. Detailed results and known gaps are in
 [STATUS.md](STATUS.md).
 
 ## 9. Plugin entry point
