@@ -1,38 +1,42 @@
 # CrushJoints
 
-A JUCE-based clone of the classic CamelCrusher DSP plugin by Camel Audio.
+A JUCE-based distortion and compressor plugin, inspired by the classic CamelCrusher by Camel Audio. As I struggled
+to get the original to work on my new system, I had to compromise and tinker alot with other options when opening 
+older projects. Even then, sometimes the results still left something to be desired, so as an avid enjoyer of the
+original, this project was incepted. It has to be stated, that this is no attempt of a complete one-to-one clone
+of the plugin, but rather a focused attempt to approximate the original's sounds as close as possible. This allows to 
+add some quality-of-life features, while still offering the same sound.  
+This project is heavily influenced/inspired by other peoples projects, specifically:
+ - **[reverse-camel](https://github.com/soerenbnoergaard/reverse-camel)**: for the black box analysis of the tube and mech distortion modules
+ - **[CrushClone](https://github.com/doxiedevops/CrushClone)**: for the general idea of building this (and I snatched their presets)
 
 ## Overview
 
-CrushJoints aims to be a faithful recreation of the CamelCrusher multi-effect
-plugin, featuring:
-- Tube and Mech distortion with the original polynomial coefficient tables
+CrushJoints fundamental aim is to be a faithful recreation of the CamelCrusher effect chain. In this regard it is featuring:
+- Tube and Mech distortion dials
 - 12 dB/octave low-pass filter with resonance (Q 1–7)
-- One-knob compressor with Phat mode (a measured model of the original)
+- One-knob compressor with Phat mode
+- A "Random"-izer button
 - Master volume and mix controls
-- Default preset at the top, plus 20 original and 11 CrushClone presets grouped into Legacy/Original, CrushClone and User categories
-- Saveable user presets in a separate User group
+- The 20 presets of the original
+
+Beyond that, CrushJoints also has:
 - A/B parameter comparison with copy-between-slots
-- Per-parameter randomize locks with double-click reset
+- A resizable interface
+- Per-parameter randomize locks
+- 11 additional CrushClone presets
 - Native mono/stereo bus support for mono tracks
-- Resizable dark blue/yellow interface with labelled controls
 
-> **Current status:** Version 1 is feature-complete and validated with
-> `pluginval`, `auval` and a manual Reaper pass (automation, presets, project
-> reload, A/B, bypass). The remaining release work is a second DAW (Logic is not
-> installed here) and optional CI. Version 2 covers GUI and workflow upgrades.
-> See [docs/STATUS.md](docs/STATUS.md) and [docs/ROADMAP.md](docs/ROADMAP.md).
-
-## Building
+## Building (MacOS)
 
 ### Prerequisites
 - Xcode Command Line Tools
-- CMake 3.22 or newer (install via Homebrew: `brew install cmake`)
+- CMake 3.22 or newer
 - A JUCE 8/9 source checkout (tested with JUCE 9.0.4)
 
 ### Build Steps
-1. Clone the repository
-2. Point CMake at your JUCE checkout (defaults to `/Volumes/WDB/user/flo/JUCE`):
+1. Clone the repo
+2. Point CMake at your JUCE checkout:
    ```sh
    cmake -B build -DCMAKE_BUILD_TYPE=Release -DJUCE_ROOT=/path/to/JUCE
    ```
@@ -41,15 +45,9 @@ plugin, featuring:
    cmake --build build --config Release -j8
    ```
 
-On macOS the built artefacts are in `build/CrushJoints_artefacts/Release/`:
-
-- `VST3/CrushJoints.vst3`
-- `AU/CrushJoints.component`
-- `Standalone/CrushJoints.app`
-
+The built artefacts are in `build/CrushJoints_artefacts/Release/`.
 Copy the VST3/AU bundles to `~/Library/Audio/Plug-Ins/VST3/` and
-`~/Library/Audio/Plug-Ins/Components/` respectively, or run the standalone app
-directly.
+`~/Library/Audio/Plug-Ins/Components/` respectively.
 
 Run the offline tests with:
 

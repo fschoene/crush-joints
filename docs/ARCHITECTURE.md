@@ -62,7 +62,7 @@ plugin is not in the repository.
 
 - `cmake_minimum_required(VERSION 3.22)`; C++17.
 - JUCE is not fetched automatically. `JUCE_ROOT` must point at a JUCE checkout
-  (default `/Volumes/WDB/user/flo/JUCE`, tested with JUCE 9.0.4).
+  (tested with JUCE 9.0.4).
 - `juce_add_plugin(CrushJoints …)` produces **VST3**, **AU** and **Standalone**
   on macOS. There is no CLAP, LV2 or AAX target.
 - Plugin metadata: code `CJTS`, manufacturer `Crsh`, VST3 category `Fx` /
