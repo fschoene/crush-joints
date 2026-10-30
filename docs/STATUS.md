@@ -15,7 +15,7 @@ deliberate deviations. How the code is organised is in
 | OS | macOS 26 (arm64) |
 | Compiler | AppleClang 21.0.0 |
 | CMake | 4.4.4 |
-| JUCE | 9.0.4, local checkout at `/Volumes/WDB/user/flo/JUCE` |
+| JUCE | 9.0.4, local checkout (not vendored) |
 | Build type | Release |
 | Plugin version | 0.9.0 (the v1.0 checklist is not complete yet) |
 
@@ -78,7 +78,7 @@ randomize locks and the signal-chain order.
 |-------|--------|
 | Clean CMake configure/build | ✅ macOS arm64, no source warnings |
 | Standalone launch | ✅ 6 s, no crash |
-| `auval -v aufx CJTS Crsh` | ✅ `AU VALIDATION SUCCEEDED` |
+| `auval -v aufx CJTS Rflo` | ✅ `AU VALIDATION SUCCEEDED` |
 | pluginval 1.0.4, VST3, strictness 5 | ✅ in-process and out-of-process |
 | pluginval 1.0.4, VST3, strictness 10 | ✅ fuzzing, thread safety, state, automation, bus layouts, Steinberg validator |
 | pluginval 1.0.4, AU, strictness 5 and 10 | ✅ (see warning note) |
@@ -105,7 +105,7 @@ Commands used (macOS):
 cp -R build/CrushJoints_artefacts/Release/AU/CrushJoints.component \
       ~/Library/Audio/Plug-Ins/Components/
 
-auval -v aufx CJTS Crsh
+auval -v aufx CJTS Rflo
 
 pluginval --strictness-level 5 --validate-in-process \
           build/CrushJoints_artefacts/Release/VST3/CrushJoints.vst3

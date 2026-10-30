@@ -40,7 +40,7 @@ slice. The 2011 installer places the VST at
 `/Library/Application Support/Camel Audio/CamelCrusherData/`.
 
 CrushJoints uses its own identity (`CrushJoints`, plug-in code `CJTS`,
-manufacturer name `rurouni flojo`, 4-character manufacturer code `Crsh`) and 12
+manufacturer name `rurouni flojo`, 4-character manufacturer code `Rflo`) and 12
 public parameters. Reopening old sessions by identity is a
 separate compatibility project, listed in the [roadmap backlog](ROADMAP.md).
 

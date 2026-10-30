@@ -23,7 +23,7 @@ juce_add_plugin(CrushJoints
     COMPANY_NAME "rurouni flojo"
     PLUGIN_NAME "CrushJoints"
     PLUGIN_CODE "CJTS"
-    PLUGIN_MANUFACTURER_CODE "Crsh"
+    PLUGIN_MANUFACTURER_CODE "Rflo"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE

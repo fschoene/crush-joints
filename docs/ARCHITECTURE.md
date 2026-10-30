@@ -66,7 +66,7 @@ plugin is not in the repository.
 - `juce_add_plugin(CrushJoints …)` produces **VST3**, **AU** and **Standalone**
   on macOS. There is no CLAP, LV2 or AAX target.
 - Plugin metadata: plug-in code `CJTS`, manufacturer name `rurouni flojo`,
-  4-character manufacturer code `Crsh`, VST3 category `Fx` / subcategory
+  4-character manufacturer code `Rflo` (AU requires at least one uppercase), VST3 category `Fx` / subcategory
   `Filter`. The project version is `0.9.0` while the v1.0 checklist is
   incomplete.
 - Compile definitions: `JUCE_WEB_BROWSER=0`, `JUCE_USE_CURL=0`,
