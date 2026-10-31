@@ -43,7 +43,7 @@ jobs:
   macos:
     name: macOS (universal)
     needs: version
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
 
     steps:
@@ -156,14 +156,19 @@ jobs:
           git clone --depth 1 --branch "$env:JUCE_VERSION"
           https://github.com/juce-framework/JUCE.git "$env:RUNNER_TEMP/JUCE"
 
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Configure
         run: >
-          cmake -B build -G "Visual Studio 17 2022" -A x64
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
           -DJUCE_ROOT="$env:RUNNER_TEMP/JUCE"
 
       - name: Build
         run: |
-          cmake --build build --config Release --parallel 2>&1 | Tee-Object -FilePath build.log
+          cmake --build build --parallel 2>&1 | Tee-Object -FilePath build.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run offline tests

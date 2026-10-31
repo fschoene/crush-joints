@@ -314,8 +314,8 @@ namespace
                        "cutoff curve inverse at " + juce::String(point.hz) + " Hz");
         }
 
-        check(CrushJoints::CutoffCurve::toNormalised(10.0f) == 0.0f, "cutoff below range clamps");
-        check(CrushJoints::CutoffCurve::toNormalised(30000.0f) == 1.0f, "cutoff above range clamps");
+        checkClose(CrushJoints::CutoffCurve::toNormalised(10.0f), 0.0f, 1.0e-7f, "cutoff below range clamps");
+        checkClose(CrushJoints::CutoffCurve::toNormalised(30000.0f), 1.0f, 1.0e-7f, "cutoff above range clamps");
     }
 
     // Magnitude of the bilinear 2-pole low-pass biquad (RBJ form) at a frequency.

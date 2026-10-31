@@ -308,8 +308,8 @@ CrushJointsAudioProcessorEditor::CrushJointsAudioProcessorEditor(CrushJointsAudi
                     juce::roundToInt(designWidth * 1.5f),
                     juce::roundToInt(designHeight * 1.5f));
 
-    if (auto* constrainer = getConstrainer())
-        constrainer->setFixedAspectRatio(static_cast<double>(designWidth) / designHeight);
+    if (auto* componentConstrainer = getConstrainer())
+        componentConstrainer->setFixedAspectRatio(static_cast<double>(designWidth) / designHeight);
 
     setSize(designWidth, designHeight);
 }
