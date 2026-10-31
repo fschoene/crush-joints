@@ -232,7 +232,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            cmake ninja-build zip xvfb \
+            cmake ninja-build zip xvfb xauth libxss1 \
             libasound2-dev libjack-jackd2-dev ladspa-sdk \
             libfreetype-dev libfontconfig1-dev \
             libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
@@ -264,8 +264,8 @@ jobs:
 
       - name: Run offline tests
         run: |
-          ./build/CrushJointsTests_artefacts/Release/CrushJointsTests
-          ./build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
+          xvfb-run -a ./build/CrushJointsTests_artefacts/Release/CrushJointsTests
+          xvfb-run -a ./build/CrushJointsProcessorTests_artefacts/Release/CrushJointsProcessorTests
 
       - name: pluginval
         run: |
