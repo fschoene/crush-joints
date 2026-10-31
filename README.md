@@ -38,7 +38,7 @@ Beyond that, CrushJoints also has:
 
 1. Go to the release page and download the appropriate file for your system
 2. There is no installer, just the plain VST3/AU plugin files, so you have to copy them 
- wherever these usually live on your system. That means in generally:
+ wherever these usually live on your system. That means generally:
    - **for macOS**: `CrushJoints.vst3` → `~/Library/Audio/Plug-Ins/VST3/` and
      `CrushJoints.component` → `~/Library/Audio/Plug-Ins/Components/`
      (use `/Library/Audio/Plug-Ins/...` to install for all users)

@@ -605,7 +605,10 @@ void CrushJointsAudioProcessor::setStateInformation(const void* data, int sizeIn
 
     currentProgram = juce::jlimit(0, juce::jmax(0, getNumPrograms() - 1), currentProgram);
 
-    updateHostDisplay();
+    // The host already owns the state it just restored. Notifying it here can
+    // make it re-read parameters from the edit controller before that
+    // controller has been synchronised, which shows up as a state-restoration
+    // race in pluginval.
     sendChangeMessage();
 }
 
