@@ -95,19 +95,19 @@ public:
     // Parameters
     juce::AudioParameterFloat* tubeParam;
     juce::AudioParameterFloat* mechParam;
-    juce::AudioParameterBool* tubeOnParam;
+    juce::AudioParameterChoice* tubeOnParam;
     
     juce::AudioParameterFloat* cutoffParam;
     juce::AudioParameterFloat* resParam;
-    juce::AudioParameterBool* lpfOnParam;
+    juce::AudioParameterChoice* lpfOnParam;
     
     juce::AudioParameterFloat* amountParam;
-    juce::AudioParameterBool* phatParam;
-    juce::AudioParameterBool* compOnParam;
+    juce::AudioParameterChoice* phatParam;
+    juce::AudioParameterChoice* compOnParam;
     
     juce::AudioParameterFloat* volumeParam;
     juce::AudioParameterFloat* mixParam;
-    juce::AudioParameterBool* masterOnParam;
+    juce::AudioParameterChoice* masterOnParam;
 
     //==============================================================================
     juce::AudioProcessorValueTreeState& getAPVTS() noexcept { return apvts; }

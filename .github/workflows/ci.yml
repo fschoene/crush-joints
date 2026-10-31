@@ -15,7 +15,7 @@ concurrency:
 
 env:
   JUCE_VERSION: "9.0.4"
-  PLUGINVAL_VERSION: "1.0.4"
+  PLUGINVAL_VERSION: "2.0.0-beta3"
 
 jobs:
   macos:
@@ -75,16 +75,15 @@ jobs:
           set -euo pipefail
           curl -sL -o "$RUNNER_TEMP/pluginval.zip" \
             "https://github.com/Tracktion/pluginval/releases/download/v${PLUGINVAL_VERSION}/pluginval_macOS.zip"
-          echo "3c4c533bda0c5059eea3ddaea752d757ee2025041f0f47e6bcb0e87f6082b29f  $RUNNER_TEMP/pluginval.zip" \
+          echo "d13c260110e9a1d375e9130e79d20439dcdc9f7d0cfcad74a29197dd78d84ac3  $RUNNER_TEMP/pluginval.zip" \
             | shasum -a 256 -c -
           unzip -q "$RUNNER_TEMP/pluginval.zip" -d "$RUNNER_TEMP"
           xattr -dr com.apple.quarantine "$RUNNER_TEMP/pluginval.app"
 
-          "$RUNNER_TEMP/pluginval.app/Contents/MacOS/pluginval" \
-            --strictness-level 5 --validate-in-process --timeout-ms 60000 \
+          pv="$RUNNER_TEMP/pluginval.app/Contents/MacOS/pluginval"
+          "$pv" validate --strictness-level 5 --timeout-ms 60000 \
             build/CrushJoints_artefacts/Release/VST3/CrushJoints.vst3
-          "$RUNNER_TEMP/pluginval.app/Contents/MacOS/pluginval" \
-            --strictness-level 5 --validate-in-process --timeout-ms 60000 \
+          "$pv" validate --strictness-level 5 --timeout-ms 60000 \
             build/CrushJoints_artefacts/Release/AU/CrushJoints.component
 
       - name: Upload failure log
@@ -149,12 +148,12 @@ jobs:
           $zip = "$env:RUNNER_TEMP\pluginval.zip"
           curl.exe -sL -o $zip $url
           $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-          if ($hash -ne "c08e61ce3b96db41636f8ec7e76f4c7e2c13ebdac7fa1b5a1f52b4f32ec715ab") {
+          if ($hash -ne "da158e918b60430c6a5223cd99cc2e746bda604e583258c400898caf4e95c523") {
             throw "pluginval checksum mismatch: $hash"
           }
           Expand-Archive -Path $zip -DestinationPath $env:RUNNER_TEMP -Force
 
-          & "$env:RUNNER_TEMP\pluginval.exe" --strictness-level 5 --validate-in-process `
+          & "$env:RUNNER_TEMP\pluginval.exe" validate --strictness-level 5 `
             --timeout-ms 60000 "build\CrushJoints_artefacts\Release\VST3\CrushJoints.vst3"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -226,13 +225,13 @@ jobs:
           set -euo pipefail
           curl -sL -o "$RUNNER_TEMP/pluginval.zip" \
             "https://github.com/Tracktion/pluginval/releases/download/v${PLUGINVAL_VERSION}/pluginval_Linux.zip"
-          echo "c01c49d8063965c4c2dea8324468336768f5c9139e0b1caebde14c2400b55352  $RUNNER_TEMP/pluginval.zip" \
+          echo "2e23d311c8c2664457b11be8f6cf4ed29cfdc08765c71c43934a1ed3360f118f  $RUNNER_TEMP/pluginval.zip" \
             | sha256sum -c -
           unzip -q "$RUNNER_TEMP/pluginval.zip" -d "$RUNNER_TEMP"
           chmod +x "$RUNNER_TEMP/pluginval"
 
-          xvfb-run -a "$RUNNER_TEMP/pluginval" \
-            --strictness-level 5 --validate-in-process --timeout-ms 60000 \
+          xvfb-run -a "$RUNNER_TEMP/pluginval" validate \
+            --strictness-level 5 --timeout-ms 60000 \
             build/CrushJoints_artefacts/Release/VST3/CrushJoints.vst3
 
       - name: Upload failure log

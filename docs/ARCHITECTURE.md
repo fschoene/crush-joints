@@ -161,16 +161,16 @@ the editor.
 |-----------|----|------|-------|---------|
 | Tube | `tube` | float | 0.0–1.0 | 0.0 |
 | Mech | `mech` | float | 0.0–1.0 | 0.0 |
-| Distortion on | `tube_on` | bool | — | true |
+| Distortion on | `tube_on` | choice (Off/On) | — | true |
 | Cutoff | `cutoff` | float Hz, original knob curve | 80–16000 | 16000 |
 | Resonance | `res` | float | 0.0–1.0 | 0.0 |
-| Filter on | `lpf_on` | bool | — | false |
+| Filter on | `lpf_on` | choice (Off/On) | — | false |
 | Amount | `amount` | float | 0.0–1.0 | 0.0 |
-| Phat | `phat` | bool | — | false |
-| Compressor on | `comp_on` | bool | — | true |
+| Phat | `phat` | choice (Off/On) | — | false |
+| Compressor on | `comp_on` | choice (Off/On) | — | true |
 | Volume | `volume` | float dB | −24–+12 | 0.0 |
 | Mix | `mix` | float | 0.0–1.0 | 1.0 |
-| Master on | `master_on` | bool | — | true |
+| Master on | `master_on` | choice (Off/On) | — | true |
 
 Notes:
 
@@ -181,6 +181,10 @@ Notes:
 - `cutoff` stores Hz, but its `NormalisableRange` uses the measured knob curve
   (`CutoffCurve`), so the knob, host automation and preset conversion share one
   law.
+- The five switches are two-choice parameters (`Off`/`On`), not
+  `AudioParameterBool`. This keeps their stored value discrete (0/1) when a host
+  sends an arbitrary normalised value, which pluginval and DAW automation
+  expect.
 - A/B comparison is a processor-level pair of snapshots of all 12 normalised
   values. Switching captures the current parameters and applies the other
   snapshot through `setValueNotifyingHost`, so the host sees the change. DSP

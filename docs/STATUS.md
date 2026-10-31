@@ -79,9 +79,9 @@ randomize locks and the signal-chain order.
 | Clean CMake configure/build | ✅ macOS arm64, no source warnings |
 | Standalone launch | ✅ 6 s, no crash |
 | `auval -v aufx CJTS Rflo` | ✅ `AU VALIDATION SUCCEEDED` |
-| pluginval 1.0.4, VST3, strictness 5 | ✅ in-process and out-of-process |
-| pluginval 1.0.4, VST3, strictness 10 | ✅ fuzzing, thread safety, state, automation, bus layouts, Steinberg validator |
-| pluginval 1.0.4, AU, strictness 5 and 10 | ✅ (see warning note) |
+| pluginval 2.0.0-beta3, VST3, strictness 5 | ✅ in-process and out-of-process |
+| pluginval 2.0.0-beta3, VST3, strictness 10 | ✅ fuzzing, thread safety, state, automation, bus layouts, Steinberg validator |
+| pluginval 2.0.0-beta3, AU, strictness 5 and 10 | ✅ (see warning note) |
 | Reaper manual pass | ✅ automation, factory/user presets, project reload, A/B slots, master bypass |
 | Logic Pro, AU | ⬜ not installed on the development machine |
 | CPU / latency / buffer sizes | ✅ see below |
@@ -108,11 +108,11 @@ cp -R build/CrushJoints_artefacts/Release/AU/CrushJoints.component \
 
 auval -v aufx CJTS Rflo
 
-pluginval --strictness-level 5 --validate-in-process \
+pluginval validate --strictness-level 5 \
           build/CrushJoints_artefacts/Release/VST3/CrushJoints.vst3
-pluginval --strictness-level 10 --validate-in-process \
+pluginval validate --strictness-level 10 \
           build/CrushJoints_artefacts/Release/VST3/CrushJoints.vst3
-pluginval --strictness-level 10 --validate-in-process \
+pluginval validate --strictness-level 10 \
           build/CrushJoints_artefacts/Release/AU/CrushJoints.component
 ```
 

@@ -3,6 +3,26 @@
 #include "CutoffCurve.h"
 #include <cmath>
 
+namespace
+{
+    // Hosts may send arbitrary normalised values to a two-state switch. Using a
+    // two-choice parameter keeps the stored value discrete (0 or 1) and avoids
+    // the raw-normalised-value behaviour of AudioParameterBool.
+    bool isOn(const juce::AudioParameterChoice* parameter)
+    {
+        return parameter->getIndex() != 0;
+    }
+
+    juce::AudioParameterChoice* makeOnOff(const juce::String& id,
+                                          const juce::String& name,
+                                          bool defaultValue)
+    {
+        return new juce::AudioParameterChoice(id, name,
+                                              juce::StringArray { "Off", "On" },
+                                              defaultValue ? 1 : 0);
+    }
+}
+
 //==============================================================================
 CrushJointsAudioProcessor::CrushJointsAudioProcessor(juce::File userPresetFile)
     : AudioProcessor(BusesProperties()
@@ -13,7 +33,7 @@ CrushJointsAudioProcessor::CrushJointsAudioProcessor(juce::File userPresetFile)
                 // Distortion parameters
                 std::make_unique<juce::AudioParameterFloat>("tube", "Tube", 0.0f, 1.0f, 0.0f),
                 std::make_unique<juce::AudioParameterFloat>("mech", "Mech", 0.0f, 1.0f, 0.0f),
-                std::make_unique<juce::AudioParameterBool>("tube_on", "Distortion On", true),
+                std::unique_ptr<juce::AudioParameterChoice>(makeOnOff("tube_on", "Distortion On", true)),
                 
                 // Filter parameters
                 // The knob follows the original's cutoff curve (80 Hz .. 16 kHz).
@@ -37,36 +57,36 @@ CrushJointsAudioProcessor::CrushJointsAudioProcessor(juce::File userPresetFile)
                             return lower.contains("k") ? number * 1000.0f : number;
                         })),
                 std::make_unique<juce::AudioParameterFloat>("res", "Resonance", 0.0f, 1.0f, 0.0f),
-                std::make_unique<juce::AudioParameterBool>("lpf_on", "Filter On", false),
+                std::unique_ptr<juce::AudioParameterChoice>(makeOnOff("lpf_on", "Filter On", false)),
                 
                 // Compressor parameters
                 std::make_unique<juce::AudioParameterFloat>("amount", "Amount", 0.0f, 1.0f, 0.0f),
-                std::make_unique<juce::AudioParameterBool>("phat", "Phat Mode", false),
-                std::make_unique<juce::AudioParameterBool>("comp_on", "Compressor On", true),
+                std::unique_ptr<juce::AudioParameterChoice>(makeOnOff("phat", "Phat Mode", false)),
+                std::unique_ptr<juce::AudioParameterChoice>(makeOnOff("comp_on", "Compressor On", true)),
                 
                 // Master parameters
                 std::make_unique<juce::AudioParameterFloat>("volume", "Volume", -24.0f, 12.0f, 0.0f),
                 std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.0f, 1.0f, 1.0f),
-                std::make_unique<juce::AudioParameterBool>("master_on", "Master On", true)
+                std::unique_ptr<juce::AudioParameterChoice>(makeOnOff("master_on", "Master On", true))
            }),
       presets(userPresetFile)
 {
     // Get parameter references
     tubeParam = (juce::AudioParameterFloat*)apvts.getParameter("tube");
     mechParam = (juce::AudioParameterFloat*)apvts.getParameter("mech");
-    tubeOnParam = (juce::AudioParameterBool*)apvts.getParameter("tube_on");
+    tubeOnParam = (juce::AudioParameterChoice*)apvts.getParameter("tube_on");
     
     cutoffParam = (juce::AudioParameterFloat*)apvts.getParameter("cutoff");
     resParam = (juce::AudioParameterFloat*)apvts.getParameter("res");
-    lpfOnParam = (juce::AudioParameterBool*)apvts.getParameter("lpf_on");
+    lpfOnParam = (juce::AudioParameterChoice*)apvts.getParameter("lpf_on");
     
     amountParam = (juce::AudioParameterFloat*)apvts.getParameter("amount");
-    phatParam = (juce::AudioParameterBool*)apvts.getParameter("phat");
-    compOnParam = (juce::AudioParameterBool*)apvts.getParameter("comp_on");
+    phatParam = (juce::AudioParameterChoice*)apvts.getParameter("phat");
+    compOnParam = (juce::AudioParameterChoice*)apvts.getParameter("comp_on");
     
     volumeParam = (juce::AudioParameterFloat*)apvts.getParameter("volume");
     mixParam = (juce::AudioParameterFloat*)apvts.getParameter("mix");
-    masterOnParam = (juce::AudioParameterBool*)apvts.getParameter("master_on");
+    masterOnParam = (juce::AudioParameterChoice*)apvts.getParameter("master_on");
     
     parameterRefs = {
         tubeParam, mechParam, tubeOnParam,
@@ -185,17 +205,17 @@ void CrushJointsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     // Push the current parameter values into the DSP modules.
     distortion.setTubeAmount(tubeParam->get());
     distortion.setMechAmount(mechParam->get());
-    distortion.setTubeOn(tubeOnParam->get());
+    distortion.setTubeOn(isOn(tubeOnParam));
 
     filter.setCutoff(cutoffParam->get());
     filter.setResonance(resParam->get());
-    filter.setFilterOn(lpfOnParam->get());
+    filter.setFilterOn(isOn(lpfOnParam));
 
     compressor.setAmount(amountParam->get());
-    compressor.setPhatMode(phatParam->get());
-    compressor.setCompressorOn(compOnParam->get());
+    compressor.setPhatMode(isOn(phatParam));
+    compressor.setCompressorOn(isOn(compOnParam));
 
-    const bool masterIsOn = masterOnParam->get();
+    const bool masterIsOn = isOn(masterOnParam);
     const float mix = mixParam->get();
 
     master.setVolume(volumeParam->get());
@@ -465,16 +485,16 @@ void CrushJointsAudioProcessor::applyPreset(const CrushJoints::Preset& preset)
 {
     *tubeParam     = preset.tube;
     *mechParam     = preset.mech;
-    *tubeOnParam   = preset.tubeOn;
+    *tubeOnParam   = preset.tubeOn ? 1 : 0;
     *cutoffParam   = preset.cutoff;
     *resParam      = preset.res;
-    *lpfOnParam    = preset.lpfOn;
+    *lpfOnParam    = preset.lpfOn ? 1 : 0;
     *amountParam   = preset.amount;
-    *phatParam     = preset.phat;
-    *compOnParam   = preset.compOn;
+    *phatParam     = preset.phat ? 1 : 0;
+    *compOnParam   = preset.compOn ? 1 : 0;
     *volumeParam   = preset.volume;
     *mixParam      = preset.mix;
-    *masterOnParam = preset.masterOn;
+    *masterOnParam = preset.masterOn ? 1 : 0;
 }
 
 CrushJoints::Preset CrushJointsAudioProcessor::captureAsPreset(const juce::String& name) const
@@ -483,16 +503,16 @@ CrushJoints::Preset CrushJointsAudioProcessor::captureAsPreset(const juce::Strin
     preset.name = name.trim().substring(0, 64);
     preset.tube = tubeParam->get();
     preset.mech = mechParam->get();
-    preset.tubeOn = tubeOnParam->get();
+    preset.tubeOn = isOn(tubeOnParam);
     preset.cutoff = cutoffParam->get();
     preset.res = resParam->get();
-    preset.lpfOn = lpfOnParam->get();
+    preset.lpfOn = isOn(lpfOnParam);
     preset.amount = amountParam->get();
-    preset.phat = phatParam->get();
-    preset.compOn = compOnParam->get();
+    preset.phat = isOn(phatParam);
+    preset.compOn = isOn(compOnParam);
     preset.volume = volumeParam->get();
     preset.mix = mixParam->get();
-    preset.masterOn = masterOnParam->get();
+    preset.masterOn = isOn(masterOnParam);
     preset.category = CrushJoints::PresetCategory::user;
     return preset;
 }

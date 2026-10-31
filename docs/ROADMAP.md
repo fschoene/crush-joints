@@ -129,7 +129,7 @@ Source of truth: [MEASUREMENTS.md](MEASUREMENTS.md), produced with
 
 - [x] Extend the test harness: offline render comparison, fuzzing through
       pluginval strictness 10, and `tools/analysis/benchmark_cpu.py`.
-- [x] `pluginval` on the VST3 at strictness 5 (in- and out-of-process) and 10.
+- [x] `pluginval` on the VST3 at strictness 5 and 10.
 - [x] `pluginval` on the AU at strictness 5 and 10; `auval` passes.
 - [x] Manual Reaper pass: parameter automation, factory/user preset switching,
       project reload, A/B slots and master bypass all work.
